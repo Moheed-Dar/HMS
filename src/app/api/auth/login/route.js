@@ -11,9 +11,9 @@ import bcrypt from "bcryptjs";
 export async function POST(request) {
   try {
     await connectDB();
-    console.log("Admin Model:", Admin);
-    console.log("Doctor Model:", Doctor);
-    console.log("Patient Model:", Patient);
+    // console.log("Admin Model:", Admin);
+    // console.log("Doctor Model:", Doctor);
+    // console.log("Patient Model:", Patient);
     const { email, password, role } = await request.json();
 
     if (!email || !password) {
