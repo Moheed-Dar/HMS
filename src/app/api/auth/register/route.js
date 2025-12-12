@@ -1,182 +1,134 @@
+// app/api/auth/register/route.js
+
 import { NextResponse } from "next/server";
-import Admin from "@backend/models/Admin";
-import Doctor from "@backend/models/Doctor";
-import Patient from "@backend/models/Patient";
-import { generateToken } from "@backend/lib/jwt";
-import {connectDB} from "@backend/lib/db";
+import { connectDB } from "@/backend/lib/db";
+import Patient from "@/backend/models/Patient";
+import { generateToken } from "@/backend/lib/jwt";
+import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
     await connectDB();
 
-    const body = await request.json();
-    const { role, ...userData } = body;
+    const { name, email, password, phone, address } = await request.json();
 
-    // Validate role
-    if (!role) {
+    // Required fields validation
+    if (!name?.trim() || !email?.trim() || !password || !phone?.trim() || !address?.trim()) {
       return NextResponse.json(
         {
           success: false,
-          message: "Role is required (admin, doctor, patient)"
+          message: "Name, email, password, phone, and address are required"
         },
         { status: 400 }
       );
     }
 
-    // Block SuperAdmin registration from this endpoint
-    if (role === "superadmin") {
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.toLowerCase())) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "SuperAdmin registration is not allowed through this endpoint. Use /api/super-admin/register"
-        },
-        { status: 403 }
-      );
-    }
-
-    let user;
-    let Model;
-
-    // Select model based on role
-    switch (role) {
-      case "admin":
-        Model = Admin;
-        // Validate required fields
-        if (!userData.createdBy || !userData.department || !userData.employeeId) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "createdBy, department, and employeeId are required for admin"
-            },
-            { status: 400 }
-          );
-        }
-        break;
-
-      case "doctor":
-        Model = Doctor;
-        // Validate required fields
-        if (!userData.specialization || !userData.licenseNumber || 
-            !userData.department || userData.experience === undefined) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "specialization, licenseNumber, department, and experience are required for doctor"
-            },
-            { status: 400 }
-          );
-        }
-        break;
-
-      case "patient":
-        Model = Patient;
-        // Validate required fields
-        if (!userData.dateOfBirth || !userData.gender) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "dateOfBirth and gender are required for patient"
-            },
-            { status: 400 }
-          );
-        }
-        break;
-
-      default:
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Invalid role. Must be: admin, doctor, or patient"
-          },
-          { status: 400 }
-        );
-    }
-
-    // Check if email already exists in ANY model
-    const emailExists = await Promise.all([
-      SuperAdmin.findOne({ email: userData.email }),
-      Admin.findOne({ email: userData.email }),
-      Doctor.findOne({ email: userData.email }),
-      Patient.findOne({ email: userData.email })
-    ]);
-
-    if (emailExists.some(result => result !== null)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Email already exists"
-        },
+        { success: false, message: "Invalid email format" },
         { status: 400 }
       );
     }
 
-    // Create user
-    user = await Model.create(userData);
+    // Phone number validation
+    if (!/^[0-9]{10,15}$/.test(phone.replace(/\D/g, ""))) {
+      return NextResponse.json(
+        { success: false, message: "Invalid phone number" },
+        { status: 400 }
+      );
+    }
 
-    // Generate token
-    const token = generateToken({
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+    // Password length check
+    if (password.length < 6) {
+      return NextResponse.json(
+        { success: false, message: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingPatient = await Patient.findOne({ 
+      email: email.toLowerCase().trim() 
     });
 
-    // Create response
+    if (existingPatient) {
+      return NextResponse.json(
+        { success: false, message: "Email already registered" },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password.trim(), 12);
+
+    // Create new patient
+    const newPatient = await Patient.create({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+      phone: phone.trim(),
+      address: address.trim(),
+      role: "patient",
+      status: "active"
+    });
+
+    // Generate JWT token
+    const token = generateToken({
+      id: newPatient._id,
+      email: newPatient.email,
+      name: newPatient.name,
+      role: "patient"
+    });
+
+    // Send response with cookie
     const response = NextResponse.json(
       {
         success: true,
-        message: `${role} registered successfully`,
+        message: "Patient registered successfully",
         user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
+          id: newPatient._id,
+          name: newPatient.name,
+          email: newPatient.email,
+          phone: newPatient.phone,
+          address: newPatient.address,
+          role: "patient",
+          createdAt: newPatient.createdAt
         },
         token
       },
       { status: 201 }
     );
 
-    // Set cookie
+    // Set httpOnly cookie
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/"
     });
 
     return response;
 
   } catch (error) {
-    console.error("Registration Error:", error);
-    
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Validation failed",
-          errors: messages
-        },
-        { status: 400 }
-      );
-    }
+    console.error("Registration Error:", error.message);
 
+    // Handle duplicate email error
     if (error.code === 11000) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Email already exists"
-        },
+        { success: false, message: "Email already exists" },
         { status: 400 }
       );
     }
 
+    // General server error
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Registration failed"
+        message: "Registration failed",
+        error: process.env.NODE_ENV === "development" ? error.message : "Server error"
       },
       { status: 500 }
     );

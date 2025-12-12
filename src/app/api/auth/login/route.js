@@ -1,157 +1,83 @@
+// app/api/auth/login/route.js
+
 import { NextResponse } from "next/server";
-import Admin from "@backend/models/Admin";
-import Doctor from "@backend/models/Doctor";
-import Patient from "@backend/models/Patient";
-import { generateToken } from "@backend/lib/jwt";
-import {connectDB} from "@backend/lib/db";
+import { connectDB } from "@/backend/lib/db";
+import Admin from "@/backend/models/Admin";
+import Doctor from "@/backend/models/Doctor";
+import Patient from "@/backend/models/Patient";
+import { generateToken } from "@/backend/lib/jwt";
+import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
     await connectDB();
-
+    console.log("Admin Model:", Admin);
+    console.log("Doctor Model:", Doctor);
+    console.log("Patient Model:", Patient);
     const { email, password, role } = await request.json();
 
-    // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Email and password are required"
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Email & password required" }, { status: 400 });
     }
 
-    // Block SuperAdmin login from this endpoint
-    if (role === "superadmin") {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "SuperAdmin login is not allowed through this endpoint. Use /api/super-admin/login"
-        },
-        { status: 403 }
-      );
-    }
+    let user = null;
+    let userRole = "";
 
-    let user;
-    let Model;
-
-    // If role is provided, search in specific model
-    if (role) {
-      switch (role) {
-        case "admin":
-          Model = Admin;
-          break;
-        case "doctor":
-          Model = Doctor;
-          break;
-        case "patient":
-          Model = Patient;
-          break;
-        default:
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Invalid role. Must be: admin, doctor, or patient"
-            },
-            { status: 400 }
-          );
-      }
-
-      user = await Model.findOne({ email }).select("+password");
+    if (role && ["admin", "doctor", "patient"].includes(role)) {
+      const Model = role === "admin" ? Admin : role === "doctor" ? Doctor : Patient;
+      user = await Model.findOne({ email: email.toLowerCase().trim() }).select("+password");
+      userRole = role;
     } else {
-      // Search in all models (except SuperAdmin)
-      const [admin, doctor, patient] = await Promise.all([
-        Admin.findOne({ email }).select("+password"),
-        Doctor.findOne({ email }).select("+password"),
-        Patient.findOne({ email }).select("+password")
+      const [a, d, p] = await Promise.all([
+        Admin.findOne({ email: email.toLowerCase().trim() }).select("+password"),
+        Doctor.findOne({ email: email.toLowerCase().trim() }).select("+password"),
+        Patient.findOne({ email: email.toLowerCase().trim() }).select("+password")
       ]);
-
-      user = admin || doctor || patient;
+      user = a || d || p;
+      userRole = a ? "admin" : d ? "doctor" : "patient";
     }
 
     if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Invalid email or password"
-        },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 });
     }
 
-    // Check if account is active
-    if (!user.isActive) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Your account has been deactivated. Please contact support."
-        },
-        { status: 403 }
-      );
+    if (user.status !== "active") {
+      return NextResponse.json({ success: false, message: "Account deactivated" }, { status: 403 });
     }
 
-    // Compare password
-    const isPasswordValid = await user.comparePassword(password);
+    // Yeh line 100% kaam karegi ab
+    const isMatch = await bcrypt.compare(password.trim(), user.password);
 
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Invalid email or password"
-        },
-        { status: 401 }
-      );
+    if (!isMatch) {
+      return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    // Generate token
     const token = generateToken({
       id: user._id,
       email: user.email,
       name: user.name,
-      role: user.role
+      role: userRole
     });
 
-    // Create response
-    const response = NextResponse.json(
-      {
-        success: true,
-        message: `${user.role} logged in successfully`,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          lastLogin: user.lastLogin
-        },
-        token
-      },
-      { status: 200 }
-    );
+    const res = NextResponse.json({
+      success: true,
+      message: "Login successful",
+      user: { id: user._id, name: user.name, email: user.email, role: userRole },
+      token
+    });
 
-    // Set cookie
-    response.cookies.set("token", token, {
+    res.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: 604800,
       path: "/"
     });
 
-    return response;
+    return res;
 
   } catch (error) {
-    console.error("Login Error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || "Login failed"
-      },
-      { status: 500 }
-    );
+    console.error("Login Error:", error.message);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
