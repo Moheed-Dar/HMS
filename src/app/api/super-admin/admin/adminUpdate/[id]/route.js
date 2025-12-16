@@ -135,7 +135,6 @@ export async function PATCH(request, context) {
         updatedAt: updatedAdmin.updatedAt
       }
     });
-
   } catch (error) {
     console.error("Update Admin Error:", error.message);
     return NextResponse.json(

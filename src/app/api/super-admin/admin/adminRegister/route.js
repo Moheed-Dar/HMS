@@ -1,4 +1,3 @@
-
 // app/api/super-admin/admin/register/route.js
 
 import { NextResponse } from "next/server";
@@ -24,7 +23,7 @@ export async function POST(request) {
     const verification = verifyToken(token);
 
     // Tere token mein "superadmin" hai
-    if (!verification.valid || verification.decoded.role !== "superadmin") {
+    if (!verification.valid || verification.decoded.role !== "superadmin" ) {
       return NextResponse.json(
         { success: false, message: "Access Denied: SuperAdmin only" },
         { status: 403 }
@@ -50,10 +49,8 @@ export async function POST(request) {
     if (!password) return NextResponse.json({ success: false, message: "Password is required" }, { status: 400 });
     if (!department?.trim()) return NextResponse.json({ success: false, message: "Department is required" }, { status: 400 });
     if (!employeeId?.trim()) return NextResponse.json({ success: false, message: "Employee ID is required" }, { status: 400 });
-
     if (name.trim().length < 2) return NextResponse.json({ success: false, message: "Name too short" }, { status: 400 });
     if (password.length < 8) return NextResponse.json({ success: false, message: "Password must be 8+ characters" }, { status: 400 });
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.toLowerCase())) {
       return NextResponse.json({ success: false, message: "Invalid email format" }, { status: 400 });

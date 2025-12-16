@@ -78,7 +78,7 @@ const AdminSchema = new mongoose.Schema(
     },
     permissions: {
       type: [String],
-      default: ["view_doctors", "view_patients"],
+      default: ["view_doctors", "view_patients","create_doctors", "delete_doctors", "update_doctors"],
     },
     
   },
