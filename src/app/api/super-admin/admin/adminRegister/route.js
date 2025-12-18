@@ -60,7 +60,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid phone number" }, { status: 400 });
     }
 
-    const validRoles = ["admin", "doctor_manager", "billing_admin", "staff_manager"];
+    const validRoles = ["admin", "doctor_manager", "billing_admin", "staff_manager","IT_admin"];
     if (!validRoles.includes(role)) {
       return NextResponse.json({ success: false, message: "Invalid role" }, { status: 400 });
     }
@@ -116,6 +116,7 @@ export async function POST(request) {
           department: newAdmin.department,
           employeeId: newAdmin.employeeId,
           status: newAdmin.status,
+          permissions: newAdmin.permissions,
           createdAt: newAdmin.createdAt
         }
       }

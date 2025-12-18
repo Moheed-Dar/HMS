@@ -10,7 +10,7 @@ export async function DELETE(request, { params }) {
   try {
     await connectDB();
 
-    // Token check
+    // === AUTHENTICATION ===
     const token = request.cookies.get("token")?.value;
     if (!token) {
       return NextResponse.json(
@@ -19,7 +19,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Verify token
     const verification = verifyToken(token);
     if (!verification.valid) {
       return NextResponse.json(
@@ -28,31 +27,38 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const userRole = verification.decoded.role;
-    const userPermissions = verification.decoded.permissions || [];
+    // === SMART ACCESS CONTROL ===
+    const role = verification.decoded.role;
+    const permissions = verification.decoded.permissions || [];
 
-    // Permission check - only superadmin, admin or user with delete_doctors permission
-    if (userRole !== "superadmin" && userRole !== "admin") {
-      if (!userPermissions.includes("delete_doctors")) {
+    if (role !== "superadmin" && role !== "admin") {
+      if (!permissions.includes("delete_doctors")) {
         return NextResponse.json(
-          { success: false, message: "Access Denied: You don't have permission to delete doctors" },
+          {
+            success: false,
+            message: "Access Denied: You don't have 'delete_doctors' permission",
+          },
           { status: 403 }
         );
       }
     }
 
+    // === GET DOCTOR ID ===
     const { id } = await params;
 
-    // Validate ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid doctor ID" },
         { status: 400 }
       );
     }
 
-    // Check if doctor exists
-    const doctor = await Doctor.findById(id);
+    // === PEHLE FIND + POPULATE KARO (taki createdBy mile) ===
+    const doctor = await Doctor.findById(id)
+      .select("-password")
+      .populate("createdBy", "name email role")
+      .lean();
+
     if (!doctor) {
       return NextResponse.json(
         { success: false, message: "Doctor not found" },
@@ -60,19 +66,67 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Delete the doctor
+    // === AB DELETE KARO ===
     await Doctor.deleteOne({ _id: id });
-    // Ya phir: await doctor.deleteOne(); // agar pre-remove hooks use kar rahe ho
+    // Ya: await Doctor.findByIdAndDelete(id); // lekin populate nahi hoga
 
-    return NextResponse.json({
-      success: true,
-      message: "Doctor deleted successfully",
-    });
+    // === CLEAN TIME SLOTS ===
+    const cleanTimeSlots = (doctor.availableTimeSlots || []).map((slot) => ({
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
 
-  } catch (error) {
-    console.error("Delete Doctor Error:", error);
+    // === FORMAT DELETED DOCTOR DATA (ab createdBy populated hai) ===
+    const doctorData = {
+      id: doctor._id,
+      name: doctor.name,
+      email: doctor.email,
+      phone: doctor.phone,
+      avatar: doctor.avatar,
+      specialization: doctor.specialization,
+      licenseNumber: doctor.licenseNumber,
+      department: doctor.department,
+      experience: doctor.experience,
+      qualifications: doctor.qualifications || [],
+      consultationFee: doctor.consultationFee || 0,
+      availableDays: doctor.availableDays || [],
+      availableTimeSlots: cleanTimeSlots,
+      permissions: doctor.permissions || [],
+      status: doctor.status,
+      isAvailable: doctor.isAvailable,
+      rating: doctor.rating || 0,
+      totalReviews: doctor.totalReviews || 0,
+      createdAt: doctor.createdAt,
+      updatedAt: doctor.updatedAt,
+      createdBy: doctor.createdBy
+        ? {
+            id: doctor.createdBy._id,
+            name: doctor.createdBy.name,
+            email: doctor.createdBy.email,
+            role: doctor.createdBy.role,
+          }
+        : null,
+    };
+
+    // === SUCCESS RESPONSE ===
     return NextResponse.json(
-      { success: false, message: "Server error", error: error.message },
+      {
+        success: true,
+        message: "Doctor deleted successfully",
+        data: {
+          deletedDoctor: doctorData,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Admin Delete Doctor Error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Server error",
+        error: process.env.NODE_ENV === "development" ? error.message : "Something went wrong",
+      },
       { status: 500 }
     );
   }

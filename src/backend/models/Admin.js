@@ -1,4 +1,3 @@
-
 // src/backend/models/Admin.js
 
 import mongoose from "mongoose";
@@ -27,7 +26,13 @@ const AdminSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["doctor_manager", "billing_admin", "staff_manager", "admin"],
+      enum: [
+        "doctor_manager",
+        "billing_admin",
+        "staff_manager",
+        "admin",
+        "IT_admin",
+      ],
       default: "admin",
     },
     phone: {
@@ -44,13 +49,13 @@ const AdminSchema = new mongoose.Schema(
       default: "active",
     },
     isDeleted: {
-    type: Boolean,
-    default: false
-  },
-  deletedAt: {
-    type: Date,
-    default: null
-  },
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     isApproved: {
       type: Boolean,
       default: false,
@@ -78,9 +83,17 @@ const AdminSchema = new mongoose.Schema(
     },
     permissions: {
       type: [String],
-      default: ["view_doctors", "view_patients","create_doctors", "delete_doctors", "update_doctors"],
+      default: [
+        "view_doctors",
+        "create_doctors",
+        "delete_doctors",
+        "update_doctors",
+        "view_patients",
+        "update_patients",
+        "delete_patients",
+        "create_patients",
+      ],
     },
-    
   },
   { timestamps: true }
 );

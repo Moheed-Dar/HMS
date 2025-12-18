@@ -1,5 +1,4 @@
-// app/api/admin/doctors/[id]/route.js
-// ... (GET and DELETE methods remain as previously updated)
+// app/api/super-admin/doctors/[id]/update/route.js
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -19,30 +18,14 @@ export async function PUT(request, { params }) {
     }
 
     const verification = verifyToken(token);
-    if (!verification.valid) {
-      return NextResponse.json({ success: false, message: "Invalid token" }, { status: 401 });
-    }
-
-    // === SMART ACCESS CONTROL ===
-    const role = verification.decoded.role;
-    const permissions = verification.decoded.permissions || [];
-
-    if (role !== "superadmin" && role !== "admin") {
-      if (!permissions.includes("update_doctors")) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Access Denied: You don't have 'update_doctors' permission",
-          },
-          { status: 403 }
-        );
-      }
+    if (!verification.valid || verification.decoded.role !== "superadmin") {
+      return NextResponse.json({ success: false, message: "Access Denied: Super Admin only" }, { status: 403 });
     }
 
     // === GET DOCTOR ID ===
     const { id } = await params;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ success: false, message: "Invalid doctor ID" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Invalid Doctor ID" }, { status: 400 });
     }
 
     // === PARSE BODY ===
@@ -61,7 +44,7 @@ export async function PUT(request, { params }) {
       availableDays,
       availableTimeSlots,
       avatar,
-      permissions: providedPermissions,
+      permissions,
       status,
       isAvailable,
     } = body;
@@ -97,7 +80,8 @@ export async function PUT(request, { params }) {
 
     if (email !== undefined) {
       const trimmedEmail = email?.toLowerCase().trim();
-      if (!trimmedEmail || !/^[\w.-]+@[\w.-]+\.\w+$/.test(trimmedEmail)) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
         return NextResponse.json({ success: false, message: "Invalid email format" }, { status: 400 });
       }
       const emailExists = await Doctor.findOne({ email: trimmedEmail, _id: { $ne: id } });
@@ -105,21 +89,21 @@ export async function PUT(request, { params }) {
       doctor.email = trimmedEmail;
     }
 
-    if (phone !== undefined) {
-      const cleanPhone = phone?.replace(/\D/g, "") || "";
-      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-        return NextResponse.json({ success: false, message: "Phone must be 10-15 digits" }, { status: 400 });
-      }
-      const phoneExists = await Doctor.findOne({ phone: cleanPhone, _id: { $ne: id } });
-      if (phoneExists) return NextResponse.json({ success: false, message: "Phone already in use" }, { status: 400 });
-      doctor.phone = cleanPhone;
-    }
-
     if (password !== undefined && password?.trim() !== "") {
       if (password.trim().length < 6) {
         return NextResponse.json({ success: false, message: "Password must be at least 6 characters" }, { status: 400 });
       }
       doctor.password = await bcrypt.hash(password.trim(), 12);
+    }
+
+    if (phone !== undefined) {
+      const cleanPhone = phone?.replace(/\D/g, "") || "";
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        return NextResponse.json({ success: false, message: "Phone number must be 10-15 digits" }, { status: 400 });
+      }
+      const phoneExists = await Doctor.findOne({ phone: cleanPhone, _id: { $ne: id } });
+      if (phoneExists) return NextResponse.json({ success: false, message: "Phone already in use" }, { status: 400 });
+      doctor.phone = cleanPhone;
     }
 
     if (specialization !== undefined) {
@@ -193,15 +177,15 @@ export async function PUT(request, { params }) {
       doctor.avatar = avatar?.trim() || doctor.avatar;
     }
 
-    if (providedPermissions !== undefined) {
-      if (!Array.isArray(providedPermissions) || providedPermissions.length === 0) {
+    if (permissions !== undefined) {
+      if (!Array.isArray(permissions) || permissions.length === 0) {
         return NextResponse.json({ success: false, message: "Permissions must be a non-empty array" }, { status: 400 });
       }
-      const invalid = providedPermissions.filter(p => !defaultPermissions.includes(p));
-      if (invalid.length > 0) {
-        return NextResponse.json({ success: false, message: `Invalid permissions: ${invalid.join(", ")}` }, { status: 400 });
+      const invalidPerms = permissions.filter(p => !defaultPermissions.includes(p));
+      if (invalidPerms.length > 0) {
+        return NextResponse.json({ success: false, message: `Invalid permissions: ${invalidPerms.join(", ")}` }, { status: 400 });
       }
-      doctor.permissions = providedPermissions;
+      doctor.permissions = permissions;
     }
 
     if (status !== undefined) {
@@ -215,10 +199,10 @@ export async function PUT(request, { params }) {
       doctor.isAvailable = Boolean(isAvailable);
     }
 
-    // === SAVE UPDATED DOCTOR ===
+    // === SAVE ===
     await doctor.save();
 
-    // === RE-FETCH WITH POPULATED createdBy FOR RESPONSE ===
+    // === RE-FETCH WITH POPULATED createdBy ===
     const updatedDoctor = await Doctor.findById(id)
       .select("-password")
       .populate("createdBy", "name email role")
@@ -230,62 +214,56 @@ export async function PUT(request, { params }) {
       endTime: slot.endTime,
     }));
 
-    // === SUCCESS RESPONSE WITH createdBy DETAILS ===
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Doctor updated successfully",
-        updatedBy: {
-          id: verification.decoded.id,
-          name: verification.decoded.name || verification.decoded.email,
-          role: verification.decoded.role,
-          type: role === "superadmin" ? "SuperAdmin" : "Admin",
-        },
-        data: {
-          doctor: {
-            id: updatedDoctor._id,
-            name: updatedDoctor.name,
-            email: updatedDoctor.email,
-            phone: updatedDoctor.phone,
-            avatar: updatedDoctor.avatar,
-            specialization: updatedDoctor.specialization,
-            licenseNumber: updatedDoctor.licenseNumber,
-            department: updatedDoctor.department,
-            experience: updatedDoctor.experience,
-            qualifications: updatedDoctor.qualifications || [],
-            consultationFee: updatedDoctor.consultationFee || 0,
-            availableDays: updatedDoctor.availableDays || [],
-            availableTimeSlots: cleanTimeSlots,
-            permissions: updatedDoctor.permissions || [],
-            status: updatedDoctor.status,
-            isAvailable: updatedDoctor.isAvailable,
-            rating: updatedDoctor.rating || 0,
-            totalReviews: updatedDoctor.totalReviews || 0,
-            createdAt: updatedDoctor.createdAt,
-            updatedAt: updatedDoctor.updatedAt,
-            createdBy: updatedDoctor.createdBy
-              ? {
-                  id: updatedDoctor.createdBy._id,
-                  name: updatedDoctor.createdBy.name,
-                  email: updatedDoctor.createdBy.email,
-                  role: updatedDoctor.createdBy.role,
-                }
-              : null,
-          },
-        },
+    // === SUCCESS RESPONSE WITH createdBy ===
+    return NextResponse.json({
+      success: true,
+      message: "Doctor updated successfully",
+      updatedBy: {
+        id: verification.decoded.id,
+        name: verification.decoded.name || verification.decoded.email,
+        role: "superadmin",
+        type: "SuperAdmin",
       },
-      { status: 200 }
-    );
+      data: {
+        doctor: {
+          id: updatedDoctor._id,
+          name: updatedDoctor.name,
+          email: updatedDoctor.email,
+          phone: updatedDoctor.phone,
+          avatar: updatedDoctor.avatar,
+          specialization: updatedDoctor.specialization,
+          licenseNumber: updatedDoctor.licenseNumber,
+          department: updatedDoctor.department,
+          experience: updatedDoctor.experience,
+          qualifications: updatedDoctor.qualifications || [],
+          consultationFee: updatedDoctor.consultationFee || 0,
+          availableDays: updatedDoctor.availableDays || [],
+          availableTimeSlots: cleanTimeSlots,
+          permissions: updatedDoctor.permissions || [],
+          status: updatedDoctor.status,
+          isAvailable: updatedDoctor.isAvailable,
+          rating: updatedDoctor.rating || 0,
+          totalReviews: updatedDoctor.totalReviews || 0,
+          createdAt: updatedDoctor.createdAt,
+          updatedAt: updatedDoctor.updatedAt,
+          createdBy: updatedDoctor.createdBy
+            ? {
+                id: updatedDoctor.createdBy._id,
+                name: updatedDoctor.createdBy.name,
+                email: updatedDoctor.createdBy.email,
+                role: updatedDoctor.createdBy.role,
+              }
+            : null,
+        }
+      }
+    }, { status: 200 });
 
   } catch (error) {
-    console.error("Admin Update Doctor Error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Server error",
-        error: process.env.NODE_ENV === "development" ? error.message : "Something went wrong",
-      },
-      { status: 500 }
-    );
+    console.error("SuperAdmin Update Doctor Error:", error);
+    return NextResponse.json({
+      success: false,
+      message: "Server error",
+      error: process.env.NODE_ENV === "development" ? error.message : "Something went wrong"
+    }, { status: 500 });
   }
 }

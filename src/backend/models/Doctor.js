@@ -47,6 +47,18 @@ const DoctorSchema = new mongoose.Schema(
       type: String,
       required: [true, "Specialization is required"],
     },
+    permissions: {
+      type: [String],
+      default: [
+        "view_patients",
+        "view_patient_details",
+        "view_patient_history",
+        "view_appointments",
+        "create_prescription",
+        "view_reports",
+        "update_patient_notes",
+      ],
+    },
     licenseNumber: {
       type: String,
       required: [true, "License number is required"],
@@ -56,7 +68,15 @@ const DoctorSchema = new mongoose.Schema(
     department: {
       type: String,
       required: [true, "Department is required"],
-      enum: ["Cardiology", "Neurology", "Orthopedics", "Pediatrics", "Dermatology", "General", "Emergency"],
+      enum: [
+        "Cardiology",
+        "Neurology",
+        "Orthopedics",
+        "Pediatrics",
+        "Dermatology",
+        "General",
+        "Emergency",
+      ],
     },
     experience: {
       type: Number,
@@ -73,15 +93,32 @@ const DoctorSchema = new mongoose.Schema(
     },
     availableDays: {
       type: [String],
-      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      enum: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
       default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     },
-    availableTimeSlots: [
-      {
-        startTime: { type: String, required: true },
-        endTime: { type: String, required: true },
-      },
-    ],
+    availableTimeSlots: {
+      type: [
+        {
+          startTime: {
+            type: String,
+            required: [true, "Start time is required"],
+          },
+          endTime: {
+            type: String,
+            required: [true, "End time is required"],
+          },
+        },
+      ],
+      default: [],
+    },
     rating: {
       type: Number,
       default: 0,
@@ -96,7 +133,7 @@ const DoctorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: "createdByModel",

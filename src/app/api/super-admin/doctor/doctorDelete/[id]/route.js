@@ -1,4 +1,4 @@
-// app/api/admin/doctors/[id]/route.js
+// app/api/super-admin/doctors/[id]/delete/route.js
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -6,7 +6,7 @@ import Doctor from "@/backend/models/Doctor";
 import { verifyToken } from "@/backend/lib/jwt";
 import mongoose from "mongoose";
 
-export async function GET(request, { params }) {
+export async function DELETE(request, { params }) {
   try {
     await connectDB();
 
@@ -20,27 +20,11 @@ export async function GET(request, { params }) {
     }
 
     const verification = verifyToken(token);
-    if (!verification.valid) {
+    if (!verification.valid || verification.decoded.role !== "superadmin") {
       return NextResponse.json(
-        { success: false, message: "Invalid token" },
-        { status: 401 }
+        { success: false, message: "Access Denied: Super Admin only" },
+        { status: 403 }
       );
-    }
-
-    // === SMART ACCESS CONTROL ===
-    const role = verification.decoded.role;
-    const permissions = verification.decoded.permissions || [];
-
-    if (role !== "superadmin" && role !== "admin") {
-      if (!permissions.includes("view_doctors")) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Access Denied: You don't have 'view_doctors' permission",
-          },
-          { status: 403 }
-        );
-      }
     }
 
     // === GET DOCTOR ID ===
@@ -48,16 +32,16 @@ export async function GET(request, { params }) {
 
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
-        { success: false, message: "Invalid doctor ID format" },
+        { success: false, message: "Invalid doctor ID" },
         { status: 400 }
       );
     }
 
-    // === FETCH DOCTOR ===
+    // === PEHLE FIND + POPULATE KARO (taki createdBy mile) ===
     const doctor = await Doctor.findById(id)
       .select("-password")
       .populate("createdBy", "name email role")
-      .lean(); // Better performance
+      .lean();
 
     if (!doctor) {
       return NextResponse.json(
@@ -66,14 +50,17 @@ export async function GET(request, { params }) {
       );
     }
 
+    // === AB DELETE KARO ===
+    await Doctor.deleteOne({ _id: id });
+
     // === CLEAN TIME SLOTS ===
     const cleanTimeSlots = (doctor.availableTimeSlots || []).map((slot) => ({
       startTime: slot.startTime,
       endTime: slot.endTime,
     }));
 
-    // === FORMAT FULL DOCTOR DATA ===
-    const formattedDoctor = {
+    // === FORMAT DELETED DOCTOR DATA WITH createdBy ===
+    const deletedDoctorData = {
       id: doctor._id,
       name: doctor.name,
       email: doctor.email,
@@ -108,15 +95,21 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       {
         success: true,
-        message: "Doctor fetched successfully",
+        message: "Doctor deleted successfully",
+        deletedBy: {
+          id: verification.decoded.id,
+          name: verification.decoded.name || verification.decoded.email,
+          role: "superadmin",
+          type: "SuperAdmin",
+        },
         data: {
-          doctor: formattedDoctor,
+          deletedDoctor: deletedDoctorData,
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Admin Get Single Doctor Error:", error);
+    console.error("SuperAdmin Delete Doctor Error:", error);
     return NextResponse.json(
       {
         success: false,

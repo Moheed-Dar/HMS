@@ -1,4 +1,4 @@
-// app/api/admin/doctors/get/route.js
+// app/api/super-admin/doctors/route.js
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -9,7 +9,7 @@ export async function GET(request) {
   try {
     await connectDB();
 
-    // === AUTHENTICATION ===
+    // === AUTHENTICATION & AUTHORIZATION ===
     const token = request.cookies.get("token")?.value;
     if (!token) {
       return NextResponse.json(
@@ -19,28 +19,11 @@ export async function GET(request) {
     }
 
     const verification = verifyToken(token);
-    if (!verification.valid) {
+    if (!verification.valid || verification.decoded.role !== "superadmin") {
       return NextResponse.json(
-        { success: false, message: "Invalid token" },
-        { status: 401 }
+        { success: false, message: "Access Denied: Super Admin only" },
+        { status: 403 }
       );
-    }
-
-    // === SMART ACCESS CONTROL ===
-    const role = verification.decoded.role;
-    const permissions = verification.decoded.permissions || [];
-
-    // SuperAdmin aur "admin" ko full access
-    if (role !== "superadmin" && role !== "admin") {
-      if (!permissions.includes("view_doctors")) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Access Denied: You don't have 'view_doctors' permission",
-          },
-          { status: 403 }
-        );
-      }
     }
 
     // === QUERY PARAMETERS ===
@@ -49,8 +32,9 @@ export async function GET(request) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit")) || 10));
     const search = searchParams.get("search")?.trim() || "";
     const department = searchParams.get("department")?.trim() || "";
-    const specialization = searchParams.get("specialization")?.trim() || "";
     const status = searchParams.get("status")?.trim() || "";
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
     const skip = (page - 1) * limit;
 
@@ -61,38 +45,49 @@ export async function GET(request) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
-        { licenseNumber: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
         { specialization: { $regex: search, $options: "i" } },
+        { licenseNumber: { $regex: search, $options: "i" } },
       ];
     }
 
     if (department) {
-      query.department = { $regex: new RegExp(department, "i") };
-    }
-
-    if (specialization) {
-      query.specialization = { $regex: new RegExp(specialization, "i") };
+      query.department = department;
     }
 
     if (status && ["active", "inactive", "on_leave"].includes(status)) {
       query.status = status;
     }
 
-    // === FETCH DOCTORS ===
+    // === SORTING (Secure) ===
+    const validSortFields = [
+      "name",
+      "email",
+      "department",
+      "specialization",
+      "experience",
+      "consultationFee",
+      "rating",
+      "createdAt",
+      "status",
+    ];
+
+    const finalSortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const sortOption = { [finalSortField]: sortOrder };
+
+    // === FETCH DOCTORS WITH POPULATED createdBy ===
     const doctors = await Doctor.find(query)
       .select("-password")
-      .populate("createdBy", "name email role") // Only needed fields
-      .sort({ createdAt: -1 })
+      .populate("createdBy", "name email role")
+      .sort(sortOption)
       .skip(skip)
       .limit(limit)
-      .lean(); // Faster & mutable
+      .lean();
 
     const totalDoctors = await Doctor.countDocuments(query);
     const totalPages = Math.ceil(totalDoctors / limit);
 
-    // === FORMAT RESPONSE ===
-    const formattedDoctors = doctors.map((doc) => ({
+    // === FORMAT RESPONSE WITH createdBy ===
+    const cleanedDoctors = doctors.map((doc) => ({
       id: doc._id,
       name: doc.name,
       email: doc.email,
@@ -102,14 +97,14 @@ export async function GET(request) {
       licenseNumber: doc.licenseNumber,
       department: doc.department,
       experience: doc.experience,
-      qualifications: doc.qualifications || [],
       consultationFee: doc.consultationFee || 0,
+      qualifications: doc.qualifications || [],
+      permissions: doc.permissions || [],
       availableDays: doc.availableDays || [],
       availableTimeSlots: (doc.availableTimeSlots || []).map((slot) => ({
         startTime: slot.startTime,
         endTime: slot.endTime,
       })),
-      permissions: doc.permissions || [],
       status: doc.status,
       isAvailable: doc.isAvailable,
       rating: doc.rating || 0,
@@ -140,13 +135,13 @@ export async function GET(request) {
           hasPrevPage: page > 1,
         },
         data: {
-          doctors: formattedDoctors,
+          doctors: cleanedDoctors,
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Admin Get Doctors Error:", error);
+    console.error("SuperAdmin Get All Doctors Error:", error);
     return NextResponse.json(
       {
         success: false,
