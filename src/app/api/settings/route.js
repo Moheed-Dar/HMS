@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 
 // Default settings (pehli baar create hone ke liye)
 const DEFAULT_SETTINGS = {
-  hospitalName: "My Hospital",
+  hospitalName: "MediCare Hospital",
   tagline: "Caring for Life",
   address: "123 Hospital Street, City, Country",
   phone: "+92 300 1234567",

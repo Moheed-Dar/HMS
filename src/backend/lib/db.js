@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import "@backend/models/SuperAdmin";
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {

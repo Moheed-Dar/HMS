@@ -10,6 +10,10 @@ const PatientSchema = new mongoose.Schema(
       trim: true,
       maxlength: 50,
     },
+    avatar: {
+      type: String,
+      default: "https://cdn-icons-png.flaticon.com/512/6596/6596121.png",
+    },
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -33,6 +37,8 @@ const PatientSchema = new mongoose.Schema(
       type: String,
       required: [true, "Address is required"],
       trim: true,
+      minlength: 10,
+      maxlength: 200,
     },
     role: {
       type: String,
@@ -44,10 +50,42 @@ const PatientSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: "createdByModel",
+      required: true, // Dynamic reference for Admin or SuperAdmin
+    },
+    createdByModel: {
+      type: String,
+      enum: ["Admin", "SuperAdmin"],
+      default: "Admin",
+      required: true,
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: "updatedByModel",
+    },
+
+    updatedByModel: {
+      type: String,
+      enum: ["Admin", "SuperAdmin"],
+    },
     // YE SAB AB OPTIONAL HAIN — REQUIRED NHI!
-    dateOfBirth: Date,
-    gender: String,
-    bloodGroup: String,
+    dateOfBirth: {
+      type: Date,
+      validate: {
+        validator: (v) => !v || v < new Date(),
+        message: "Date of birth must be in the past",
+      },
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
+    bloodGroup: {
+      type: String,
+      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+    },
     emergencyContact: Object,
     medicalHistory: Object,
     assignedDoctor: {
@@ -65,4 +103,5 @@ PatientSchema.methods.toJSON = function () {
   return obj;
 };
 
-export default mongoose.models.Patient || mongoose.model("Patient", PatientSchema);
+export default mongoose.models.Patient ||
+  mongoose.model("Patient", PatientSchema);

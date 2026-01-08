@@ -1,16 +1,16 @@
 // app/api/profile/patient/me/route.js
+
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
 import Patient from "@/backend/models/Patient";
-import jwt from "jsonwebtoken";
+import { verifyToken } from "@/backend/lib/jwt"; // Aapka existing helper
 
 export async function GET(request) {
   try {
     await connectDB();
 
-    // 1. Token cookie se safely le rahe hain
+    // === 1. Get Token Safely ===
     const token = request.cookies.get("token")?.value;
-
     if (!token) {
       return NextResponse.json(
         { success: false, message: "No token provided. Please login again." },
@@ -18,46 +18,29 @@ export async function GET(request) {
       );
     }
 
-    // 2. JWT_SECRET check (most common cause of server error)
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is missing in environment variables");
-      return NextResponse.json(
-        { success: false, message: "Server configuration error" },
-        { status: 500 }
-      );
-    }
-
-    // 3. Token verify with proper error handling
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      console.error("JWT Verify Error:", err.message);
+    // === 2. Verify Token Using Your Helper ===
+    const verification = verifyToken(token);
+    if (!verification.valid || !verification.decoded) {
       return NextResponse.json(
         { success: false, message: "Invalid or expired token. Please login again." },
         { status: 401 }
       );
     }
 
-    // 4. Role check
-    if (decoded.role !== "patient") {
+    const { id, role } = verification.decoded;
+
+    // === 3. Role Check ===
+    if (role !== "patient") {
       return NextResponse.json(
         { success: false, message: "Unauthorized: Patient access only" },
         { status: 403 }
       );
     }
 
-    // 5. ID safely extract karo
-    const userId = decoded.id || decoded._id || decoded.userId;
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "Invalid token payload" },
-        { status: 401 }
-      );
-    }
-
-    // 6. Patient fetch (sirf basic fields, populate only if fields exist)
-    const patient = await Patient.findById(userId).select("-password");
+    // === 4. Fetch Patient ===
+    const patient = await Patient.findById(id)
+      .select("-password") // Password hatao
+      .lean(); // Plain JS object for faster processing & no Mongoose interference
 
     if (!patient) {
       return NextResponse.json(
@@ -66,28 +49,29 @@ export async function GET(request) {
       );
     }
 
-    // 7. Safe response - sirf jo fields hain unko include karo
+    // === 5. Build Clean Profile Object ===
     const profile = {
       id: patient._id,
-      name: patient.name || "Patient",
+      name: patient.name?.trim() || "Patient",
       email: patient.email,
       phone: patient.phone || null,
       address: patient.address || null,
-      avatar: patient.avatar || null,
-      status: patient.status || "active",
+      avatar: patient.avatar || "https://cdn-icons-png.flaticon.com/512/6596/6596121.png", // Default fallback
       role: "patient",
+      status: patient.status || "active",
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
+
+      // === Optional Medical Fields (Safe Include) ===
+      dateOfBirth: patient.dateOfBirth || null,
+      gender: patient.gender || null,
+      bloodGroup: patient.bloodGroup || null,
+      emergencyContact: patient.emergencyContact || null,
+      medicalHistory: patient.medicalHistory || null,
+      assignedDoctor: patient.assignedDoctor || null,
     };
 
-    // Agar extra fields hain to add kar do (safe way)
-    if (patient.dateOfBirth) profile.dateOfBirth = patient.dateOfBirth;
-    if (patient.gender) profile.gender = patient.gender;
-    if (patient.bloodGroup) profile.bloodGroup = patient.bloodGroup;
-    if (patient.allergies) profile.allergies = patient.allergies;
-    if (patient.chronicConditions) profile.chronicConditions = patient.chronicConditions;
-    if (patient.emergencyContact) profile.emergencyContact = patient.emergencyContact;
-
+    // === 6. Success Response ===
     return NextResponse.json(
       {
         success: true,
@@ -96,9 +80,7 @@ export async function GET(request) {
       },
       { status: 200 }
     );
-
   } catch (error) {
-    // Yeh error properly log karo taake pata chale kya issue hai
     console.error("Patient Profile API Error:", {
       message: error.message,
       stack: error.stack,
@@ -109,7 +91,6 @@ export async function GET(request) {
       {
         success: false,
         message: "Server error",
-        // Development mein error dikhao, production mein hide
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
       },
       { status: 500 }

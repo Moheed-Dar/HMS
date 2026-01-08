@@ -1,5 +1,3 @@
-// app/api/admin/doctors/[id]/route.js
-// ... (GET and DELETE methods remain as previously updated)
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -78,13 +76,25 @@ export async function PUT(request, { params }) {
     const validStatuses = ["active", "inactive", "on_leave"];
 
     const defaultPermissions = [
-      "view_patients",
-      "view_patient_details",
-      "view_patient_history",
-      "view_appointments",
-      "create_prescription",
-      "view_reports",
-      "update_patient_notes",
+            "view_patients",
+        "view_patient_details",
+        "view_patient_history",
+        "view_appointments",
+        "delete_appointments",
+        "create_appointments",
+        "update_appointments",
+        "create_prescription",
+        "update_prescription",
+        "delete_prescription",
+        "view_prescription",
+        "view_reports",
+        "update_patient_notes",
+        "reports_view",
+        "reports_download",
+        "reports_generate",
+        "reports_delete",
+        "reports_update",
+        "reports_create",
     ];
 
     // === FIELD-WISE VALIDATION & UPDATE ===
@@ -104,7 +114,7 @@ export async function PUT(request, { params }) {
       if (emailExists) return NextResponse.json({ success: false, message: "Email already in use" }, { status: 400 });
       doctor.email = trimmedEmail;
     }
-
+ 
     if (phone !== undefined) {
       const cleanPhone = phone?.replace(/\D/g, "") || "";
       if (cleanPhone.length < 10 || cleanPhone.length > 15) {
