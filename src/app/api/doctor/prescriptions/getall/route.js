@@ -1,6 +1,5 @@
-// app/api/prescriptions/doctor-get-permitted/route.js
-// GET: Sirf un doctors ko prescriptions dikhao jinke paas "view_prescription" permission ho
-//      Aur woh sirf apni ya shared prescriptions dekh sakein
+// app/api/doctor/prescriptions/get-permitted/route.js
+// GET: Doctors with "view_prescription" permission can see their own + shared prescriptions
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -84,7 +83,7 @@ export async function GET(request) {
       isDeleted: false,
       $or: [
         { doctor: userId },                    // Apni banayi hui
-        { viewPermissions: userId }            // Jisko share kiya gaya (assuming field name)
+        { viewPermissions: userId }            // Shared with this doctor (assuming field exists)
       ],
     };
 
@@ -126,6 +125,15 @@ export async function GET(request) {
         },
         { $unwind: { path: "$appointmentData", preserveNullAndEmptyArrays: true } },
         {
+          $lookup: {
+            from: "doctors",
+            localField: "updatedBy",
+            foreignField: "_id",
+            as: "updatedByData",
+          },
+        },
+        { $unwind: { path: "$updatedByData", preserveNullAndEmptyArrays: true } },
+        {
           $match: {
             $or: [
               { "patientData.name": searchRegex },
@@ -139,30 +147,22 @@ export async function GET(request) {
         { $limit: limit },
         {
           $project: {
-            appointment: {
-              id: "$appointmentData._id",
-              date: "$appointmentData.date",
-              timeSlot: "$appointmentData.timeSlot",
-              status: "$appointmentData.status",
-            },
-            patient: {
-              id: "$patientData._id",
-              name: "$patientData.name",
-              email: "$patientData.email",
-              phone: "$patientData.phone",
-            },
+            appointment: "$appointmentData",
+            patient: "$patientData",
+            updatedBy: "$updatedByData",
             medicines: 1,
             diagnosis: 1,
             advice: 1,
             followUpDate: 1,
             createdAt: 1,
+            updatedAt: 1,
           },
         },
       ];
 
       prescriptions = await Prescription.aggregate(pipeline);
 
-      const countPipeline = pipeline.slice(0, 5);
+      const countPipeline = pipeline.slice(0, -5); // remove last project + lookup + unwind
       countPipeline.push({ $count: "total" });
       const countResult = await Prescription.aggregate(countPipeline);
       total = countResult[0]?.total || 0;
@@ -170,6 +170,7 @@ export async function GET(request) {
       prescriptions = await Prescription.find(query)
         .populate("patient", "name email phone")
         .populate("appointment", "date timeSlot status")
+        .populate("updatedBy", "name email role")   // ← updatedBy populate
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -178,28 +179,41 @@ export async function GET(request) {
       total = await Prescription.countDocuments(query);
     }
 
-    // Format response consistently
+    // === FORMAT RESPONSE ===
     const formattedPrescriptions = prescriptions.map((pres) => ({
       id: pres._id.toString(),
       appointment: pres.appointment
         ? {
-            id: pres.appointment._id?.toString() || pres.appointment.id,
+            id: (pres.appointment._id || pres.appointment.id)?.toString(),
             date: pres.appointment.date,
             timeSlot: pres.appointment.timeSlot,
             status: pres.appointment.status,
           }
         : null,
-      patient: {
-        id: pres.patient?._id?.toString() || pres.patient?.id,
-        name: pres.patient?.name || "Patient Not Found",
-        email: pres.patient?.email || null,
-        phone: pres.patient?.phone || null,
-      },
+      patient: pres.patient
+        ? {
+            id: (pres.patient._id || pres.patient.id)?.toString(),
+            name: pres.patient.name || "Patient Not Found",
+            email: pres.patient.email || null,
+            phone: pres.patient.phone || null,
+          }
+        : null,
       medicines: pres.medicines || [],
       diagnosis: pres.diagnosis || "",
       advice: pres.advice || "",
       followUpDate: pres.followUpDate || null,
       createdAt: pres.createdAt,
+      updatedAt: pres.updatedAt,
+
+      // === UPDATED BY INFO ===
+      updatedBy: pres.updatedBy
+        ? {
+            id: pres.updatedBy._id?.toString(),
+            name: pres.updatedBy.name || "Unknown Doctor",
+            email: pres.updatedBy.email || null,
+            role: pres.updatedBy.role || "doctor",
+          }
+        : null,
     }));
 
     return NextResponse.json(

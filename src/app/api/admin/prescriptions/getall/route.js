@@ -1,10 +1,13 @@
 // app/api/prescriptions/admin-get/route.js
-// GET: Admin (with view_prescriptions permission) sab prescriptions dekh sake
+// GET: Admin sab prescriptions dekh sake (with view_prescriptions permission)
+//      UpdatedBy info bhi included
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
 import Prescription from "@/backend/models/Prescription";
-import Admin from "@/backend/models/Admin"; // ← Important: Admin model import karo
+import Admin from "@/backend/models/Admin";
+import Appointment from "@/backend/models/Appointment";
+import Doctor from "@/backend/models/Doctor"; // updatedBy ke liye
 import { verifyToken } from "@/backend/lib/jwt";
 
 export async function GET(request) {
@@ -17,49 +20,34 @@ export async function GET(request) {
       request.headers.get("authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json(
-        { success: false, message: "Login required" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Login required" }, { status: 401 });
     }
 
     const verification = verifyToken(token);
     if (!verification.valid || !verification.decoded) {
-      return NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Invalid or expired token" }, { status: 401 });
     }
 
     const { id: userId, role } = verification.decoded;
 
-    // === CHECK IF USER IS ADMIN-TYPE (Admin ya SuperAdmin collection se) ===
-    // Aapke system mein agar SuperAdmin alag model hai to usko bhi include kar lo
+    // === ADMIN CHECK ===
     const admin = await Admin.findById(userId).select("permissions status isDeleted");
-
     if (!admin) {
-      return NextResponse.json(
-        { success: false, message: "Admin not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, message: "Admin not found" }, { status: 404 });
     }
 
     if (admin.isDeleted || admin.status !== "active") {
+      return NextResponse.json({ success: false, message: "Admin account inactive or deleted" }, { status: 403 });
+    }
+
+    if (!admin.permissions?.includes("view_prescriptions")) {
       return NextResponse.json(
-        { success: false, message: "Admin account is inactive or deleted" },
+        { success: false, message: "Access denied: No view_prescriptions permission" },
         { status: 403 }
       );
     }
 
-    // === PERMISSION CHECK: view_prescriptions honi chahiye ===
-    if (!admin.permissions.includes("view_prescriptions")) {
-      return NextResponse.json(
-        { success: false, message: "Access denied: You don't have permission to view prescriptions" },
-        { status: 403 }
-      );
-    }
-
-    // === QUERY PARAMETERS ===
+    // === QUERY PARAMS ===
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page")) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit")) || 10));
@@ -85,18 +73,49 @@ export async function GET(request) {
       }
     }
 
-    let prescriptions;
-    let total;
+    let prescriptions = [];
+    let total = 0;
 
     if (search) {
+      // === AGGREGATION FOR SEARCH ===
       const pipeline = [
         { $match: query },
-        { $lookup: { from: "patients", localField: "patient", foreignField: "_id", as: "patientData" } },
-        { $lookup: { from: "doctors", localField: "doctor", foreignField: "_id", as: "doctorData" } },
-        { $lookup: { from: "appointments", localField: "appointment", foreignField: "_id", as: "appointmentData" } },
+        {
+          $lookup: {
+            from: "patients",
+            localField: "patient",
+            foreignField: "_id",
+            as: "patientData",
+          },
+        },
+        {
+          $lookup: {
+            from: "doctors",
+            localField: "doctor",
+            foreignField: "_id",
+            as: "doctorData",
+          },
+        },
+        {
+          $lookup: {
+            from: "appointments",
+            localField: "appointment",
+            foreignField: "_id",
+            as: "appointmentData",
+          },
+        },
+        {
+          $lookup: {
+            from: "doctors",
+            localField: "updatedBy",
+            foreignField: "_id",
+            as: "updatedByData",
+          },
+        },
         { $unwind: { path: "$patientData", preserveNullAndEmptyArrays: true } },
         { $unwind: { path: "$doctorData", preserveNullAndEmptyArrays: true } },
         { $unwind: { path: "$appointmentData", preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: "$updatedByData", preserveNullAndEmptyArrays: true } },
         {
           $match: {
             $or: [
@@ -105,8 +124,8 @@ export async function GET(request) {
               { "medicines.name": { $regex: search, $options: "i" } },
               { diagnosis: { $regex: search, $options: "i" } },
               { advice: { $regex: search, $options: "i" } },
-            ]
-          }
+            ],
+          },
         },
         { $sort: { createdAt: -1 } },
         { $skip: skip },
@@ -114,42 +133,33 @@ export async function GET(request) {
         {
           $project: {
             _id: 1,
-            appointment: {
-              id: "$appointmentData._id",
-              date: "$appointmentData.date",
-              timeSlot: "$appointmentData.timeSlot",
-              status: "$appointmentData.status",
-            },
-            doctor: {
-              id: "$doctorData._id",
-              name: "$doctorData.name",
-              specialization: "$doctorData.specialization",
-            },
-            patient: {
-              id: "$patientData._id",
-              name: "$patientData.name",
-              email: "$patientData.email",
-              phone: "$patientData.phone",
-            },
+            appointment: "$appointmentData",
+            doctor: "$doctorData",
+            patient: "$patientData",
+            updatedBy: "$updatedByData",
             medicines: 1,
             diagnosis: 1,
             advice: 1,
             followUpDate: 1,
             createdAt: 1,
-          }
-        }
+            updatedAt: 1,
+          },
+        },
       ];
 
       prescriptions = await Prescription.aggregate(pipeline);
-      const countPipeline = pipeline.slice(0, -4);
-      countPipeline.push({ $count: "total" });
+
+      // Count for pagination
+      const countPipeline = [...pipeline.slice(0, pipeline.length - 5), { $count: "total" }];
       const countResult = await Prescription.aggregate(countPipeline);
       total = countResult[0]?.total || 0;
     } else {
+      // Normal find + populate (faster when no search)
       prescriptions = await Prescription.find(query)
         .populate("patient", "name email phone")
         .populate("doctor", "name specialization")
         .populate("appointment", "date timeSlot status")
+        .populate("updatedBy", "name email role")   // ← UPDATED BY POPULATE
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -158,30 +168,48 @@ export async function GET(request) {
       total = await Prescription.countDocuments(query);
     }
 
-    const formattedPrescriptions = prescriptions.map(pres => ({
+    // === SAFE FORMATTING (null-safe) ===
+    const formattedPrescriptions = prescriptions.map((pres) => ({
       id: pres._id.toString(),
-      appointment: pres.appointment ? {
-        id: pres.appointment.id?.toString() || pres.appointment._id?.toString(),
-        date: pres.appointment.date,
-        timeSlot: pres.appointment.timeSlot,
-        status: pres.appointment.status,
-      } : null,
-      doctor: {
-        id: pres.doctor._id?.toString() || pres.doctor.id?.toString(),
-        name: pres.doctor.name,
-        specialization: pres.doctor.specialization || "General",
-      },
-      patient: {
-        id: pres.patient._id?.toString() || pres.patient.id?.toString(),
-        name: pres.patient.name || "Patient Not Found",
-        email: pres.patient.email || null,
-        phone: pres.patient.phone || null,
-      },
+      appointment: pres.appointment
+        ? {
+            id: pres.appointment._id?.toString(),
+            date: pres.appointment.date,
+            timeSlot: pres.appointment.timeSlot,
+            status: pres.appointment.status,
+          }
+        : null,
+      doctor: pres.doctor
+        ? {
+            id: pres.doctor._id?.toString(),
+            name: pres.doctor.name || "Unknown Doctor",
+            specialization: pres.doctor.specialization || "General",
+          }
+        : null,
+      patient: pres.patient
+        ? {
+            id: pres.patient._id?.toString(),
+            name: pres.patient.name || "Patient Not Found",
+            email: pres.patient.email || null,
+            phone: pres.patient.phone || null,
+          }
+        : null,
       medicines: pres.medicines || [],
       diagnosis: pres.diagnosis || "",
       advice: pres.advice || "",
-      followUpDate: pres.followUpDate,
+      followUpDate: pres.followUpDate || null,
       createdAt: pres.createdAt,
+      updatedAt: pres.updatedAt,
+
+      // === UPDATED BY INFO ===
+      updatedBy: pres.updatedBy
+        ? {
+            id: pres.updatedBy._id?.toString(),
+            name: pres.updatedBy.name || "Unknown",
+            email: pres.updatedBy.email || null,
+            role: pres.updatedBy.role || null,
+          }
+        : null,
     }));
 
     return NextResponse.json(
@@ -200,7 +228,6 @@ export async function GET(request) {
       },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Admin Get Prescriptions Error:", error);
     return NextResponse.json(

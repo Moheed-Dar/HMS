@@ -57,7 +57,7 @@ const PatientSchema = new mongoose.Schema(
     },
     createdByModel: {
       type: String,
-      enum: ["Admin", "SuperAdmin"],
+      enum: ["Admin", "SuperAdmin", "Doctor"],
       default: "Admin",
       required: true,
     },
@@ -68,7 +68,7 @@ const PatientSchema = new mongoose.Schema(
 
     updatedByModel: {
       type: String,
-      enum: ["Admin", "SuperAdmin"],
+      enum: ["Admin", "SuperAdmin", "Doctor"],
     },
     // YE SAB AB OPTIONAL HAIN — REQUIRED NHI!
     dateOfBirth: {

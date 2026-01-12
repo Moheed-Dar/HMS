@@ -77,6 +77,11 @@ const PrescriptionSchema = new mongoose.Schema(
       ref: "Doctor", // Sirf Doctor hi update karega
       default: null,
     },
+    updatedByModel: {
+      type: String,
+      enum: ["Doctor", "Admin", "Superadmin", "Receptionist"], // Add all possible roles
+      default: null,
+    },
     // Soft delete
     isDeleted: {
       type: Boolean,
