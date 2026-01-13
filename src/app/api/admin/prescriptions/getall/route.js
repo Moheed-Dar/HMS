@@ -1,13 +1,10 @@
-// app/api/prescriptions/admin-get/route.js
-// GET: Admin sab prescriptions dekh sake (with view_prescriptions permission)
-//      UpdatedBy info bhi included
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
 import Prescription from "@/backend/models/Prescription";
 import Admin from "@/backend/models/Admin";
 import Appointment from "@/backend/models/Appointment";
-import Doctor from "@/backend/models/Doctor"; // updatedBy ke liye
+import Doctor from "@/backend/models/Doctor"; 
 import { verifyToken } from "@/backend/lib/jwt";
 
 export async function GET(request) {

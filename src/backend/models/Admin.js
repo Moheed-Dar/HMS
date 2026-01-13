@@ -122,6 +122,10 @@ const AdminSchema = new mongoose.Schema(
         "management_update",
         "management_create",
         "management_delete",
+        "consultation_create",
+        "consultation_view",
+        "consultation_update",
+        "consultation_delete"
       ],
     },
   },

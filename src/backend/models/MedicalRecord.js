@@ -22,6 +22,12 @@ const MedicalRecordSchema = new Schema(
       required: false,
       index: true,
     },
+    consultation: {
+      type: Schema.Types.ObjectId,
+      ref: "Consultation",
+      required: false,
+      index: true,
+    },
     details: {
       type: String,
       required: [true, "Medical record details are required"],

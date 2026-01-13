@@ -69,6 +69,9 @@ const DoctorSchema = new mongoose.Schema(
         "reports_delete",
         "reports_update",
         "reports_create",
+        "view_doctors",
+        "reports_download",
+        "consultation_create"
       ],
     },
     licenseNumber: {

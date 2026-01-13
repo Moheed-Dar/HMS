@@ -95,6 +95,9 @@ export async function PUT(request, { params }) {
         "reports_delete",
         "reports_update",
         "reports_create",
+        "view_doctors",
+        "medical_records_view",
+        "consultation_create"
     ];
 
     // === FIELD-WISE VALIDATION & UPDATE ===
