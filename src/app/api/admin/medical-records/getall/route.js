@@ -1,6 +1,3 @@
-// app/api/medical-records/admin-get/route.js
-// GET: Admin medical records with fresh patient data and proper audit tracking
-// Fix: fallback to prescription.updatedBy when record.updatedBy is missing
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/backend/lib/db";
@@ -8,6 +5,8 @@ import MedicalRecord from "@/backend/models/MedicalRecord";
 import Admin from "@/backend/models/Admin";
 import Patient from "@/backend/models/Patient";
 import { verifyToken } from "@/backend/lib/jwt";
+import Appointment from "@/backend/models/Appointment";
+import Prescription from "@/backend/models/Prescription";
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/6596/6596121.png";
 

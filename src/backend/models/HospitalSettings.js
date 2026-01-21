@@ -55,8 +55,8 @@ const HospitalSettingsSchema = new mongoose.Schema(
         "Blood Bank",
         "ICU (Intensive Care Unit)",
         "NICU (Neonatal ICU)",
-        "CCU (Critical Care Unit)"
-      ]
+        "CCU (Critical Care Unit)",
+      ],
     },
     currency: { type: String, default: "PKR" },
     currencySymbol: { type: String, default: "Rs." },
@@ -67,6 +67,8 @@ const HospitalSettingsSchema = new mongoose.Schema(
 // Optional: Ensure only one document exists
 HospitalSettingsSchema.index({ _id: true });
 
-const HospitalSettings = mongoose.models.HospitalSettings || mongoose.model("HospitalSettings", HospitalSettingsSchema);
+const HospitalSettings =
+  mongoose.models.HospitalSettings ||
+  mongoose.model("HospitalSettings", HospitalSettingsSchema);
 
 export default HospitalSettings;
