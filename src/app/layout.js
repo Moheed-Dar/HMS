@@ -2,11 +2,12 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  display: 'swap',   // ✅ Server + Client safe
+  display: 'swap',
 })
 
 export const metadata = {
@@ -16,11 +17,23 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={`bg-white text-slate-900 antialiased ${poppins.className}`}>
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+    <html
+      lang="en"
+      className="scroll-smooth"
+      suppressHydrationWarning
+    >
+      <body
+        className={`${poppins.className} bg-white text-slate-900 antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   )

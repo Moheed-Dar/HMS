@@ -6,10 +6,10 @@ import Badge from '../ui/Badge'
 import { MessageCircle, Check, Smartphone } from 'lucide-react'
 
 const features = [
-  'Automated appointment reminders',
-  'Prescription delivery notifications',
-  'Payment & billing alerts',
-  'Custom message templates',
+  'Automatic visit reminders',
+  'Medication update alerts',
+  'Invoice and payment notifications',
+  'Personalized message options',
 ]
 
 export default function WhatsAppSection() {
@@ -30,16 +30,16 @@ export default function WhatsAppSection() {
             viewport={{ once: true }}
           >
             <Badge variant="gradient" className="mb-6">
-              WhatsApp Business API
+              WhatsApp Messaging Platform
             </Badge>
             
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              Connect with Patients{' '}
-              <span className="text-cyan-400">Where They Are</span>
+              Engage Patients{' '}
+              <span className="text-cyan-400">Through Their Favorite App</span>
             </h2>
             
             <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-              Leverage the power of WhatsApp to send automated appointment reminders, prescription notifications, and billing alerts. Keep your patients informed and reduce no-shows by up to 40%.
+              Utilize WhatsApp to deliver instant appointment confirmations, medication updates, and financial notifications. Improve patient communication and decrease missed appointments by up to 40%.
             </p>
 
             <ul className="space-y-4 mb-8">
@@ -61,7 +61,7 @@ export default function WhatsAppSection() {
             </ul>
 
             <Button variant="primary" size="lg">
-              Learn More
+              Discover Features
             </Button>
           </motion.div>
 
@@ -84,7 +84,7 @@ export default function WhatsAppSection() {
                 <div className="bg-green-600 px-4 py-3 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/20" />
                   <div>
-                    <div className="text-white font-semibold text-sm">OneCare Clinic</div>
+                    <div className="text-white font-semibold text-sm">MediCare Clinic</div>
                     <div className="text-green-100 text-xs">online</div>
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export default function WhatsAppSection() {
                     className="bg-green-100 rounded-lg rounded-tl-none p-3 max-w-[85%]"
                   >
                     <p className="text-sm text-slate-800">
-                      👋 Hello! Your appointment with Dr. Sharma is scheduled for tomorrow at 10:00 AM.
+                     Hello! Your appointment with Dr. Shameem is scheduled for tomorrow at 10:00 AM.
                     </p>
                     <span className="text-xs text-slate-500 mt-1 block">10:30 AM</span>
                   </motion.div>
@@ -110,7 +110,7 @@ export default function WhatsAppSection() {
                     className="bg-green-100 rounded-lg rounded-tl-none p-3 max-w-[85%]"
                   >
                     <p className="text-sm text-slate-800">
-                      💊 Your prescription has been generated. View it in your patient portal.
+                    Your prescription has been generated. View it in your patient portal.
                     </p>
                     <span className="text-xs text-slate-500 mt-1 block">2:15 PM</span>
                   </motion.div>
@@ -129,7 +129,7 @@ export default function WhatsAppSection() {
                 </div>
                 <div>
                   <div className="text-xs text-slate-500">New Message</div>
-                  <div className="text-sm font-semibold text-slate-900">OneCare</div>
+                  <div className="text-sm font-semibold text-slate-900">MediCare</div>
                 </div>
               </motion.div>
             </div>
