@@ -63,11 +63,11 @@ export default function Navbar() {
             : scrolled 
               ? 'bg-white/90 backdrop-blur-xl shadow-lg border-b border-slate-100'
               : 'bg-transparent'
-        }`}
+        } ${mobileMenuOpen ? 'hidden lg:block' : ''}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo - Updated with image */}
+            {/* Logo with Text - Visible on all screens */}
             <motion.a
               href="#home"
               className="flex items-center gap-2 group"
@@ -81,6 +81,7 @@ export default function Navbar() {
                 />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
               </div>
+              <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">MediCare</span>
             </motion.a>
 
             {/* Desktop Navigation */}
@@ -98,7 +99,7 @@ export default function Navbar() {
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
-              {/* Dark Mode Toggle - Instant */}
+              {/* Dark Mode Toggle - Visible on all screens */}
               <motion.button
                 onClick={toggleTheme}
                 className="relative p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-300"
@@ -153,60 +154,119 @@ export default function Navbar() {
                 Register Clinic
               </motion.button>
 
-              {/* Mobile Menu Button */}
+              {/* Mobile Menu Button - Always visible on mobile */}
               <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                onClick={() => setMobileMenuOpen(true)}
                 className="lg:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-label="Open menu"
               >
-                {mobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+                <FaBars size={24} />
               </button>
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800"
-            >
-              <div className="px-4 py-6 space-y-2">
-                {navLinks.map((item, index) => (
-                  <motion.a
-                    key={item.name}
-                    href={item.href}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="block px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </motion.a>
-                ))}
-                <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-                  <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 px-4">Login as</p>
-                  <div className="grid grid-cols-3 gap-2 px-4">
-                    {loginOptions.map((option) => (
-                      <button
-                        key={option.label}
-                        className="flex flex-col items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors"
-                      >
-                        <option.icon className={option.color} />
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{option.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.nav>
+
+      {/* Full Screen Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-white dark:bg-slate-900 lg:hidden"
+          >
+            {/* Top Bar with Close Button and Dark Mode Toggle */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/logo2.png" 
+                  alt="MediCare Logo" 
+                  className="h-8 w-auto object-contain"
+                />
+                <span className="text-xl font-bold text-slate-900 dark:text-white">MediCare</span>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {/* Dark Mode Toggle in Mobile Menu */}
+                <motion.button
+                  onClick={toggleTheme}
+                  className="relative p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-300"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Toggle theme"
+                >
+                  {resolvedTheme === 'dark' ? (
+                    <Sun className="w-5 h-5 text-amber-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-slate-600" />
+                  )}
+                </motion.button>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Close menu"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="px-6 py-8 space-y-1">
+              {navLinks.map((item, index) => (
+                <motion.a
+                  key={item.name}
+                  href={item.href}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="block px-4 py-4 text-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl transition-all"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.name}
+                </motion.a>
+              ))}
+            </div>
+
+            {/* Login Options Section at Bottom */}
+            <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-6">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-4">Login as</p>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {loginOptions.map((option) => (
+                  <button
+                    key={option.label}
+                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors border border-slate-200 dark:border-slate-700"
+                  >
+                    <option.icon className={`w-6 h-6 ${option.color}`} />
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Register Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                Register Clinic
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Overlay for mobile menu */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/20 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Overlay for login dropdown */}
       {loginDropdownOpen && (
