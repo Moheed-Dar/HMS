@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   reactCompiler: true,
+
+  // Add this line
+  productionBrowserSourceMaps: false,   // or true if you want source maps in prod (not recommended)
 };
 
 export default nextConfig;
