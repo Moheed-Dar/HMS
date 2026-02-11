@@ -15,15 +15,23 @@ import {
   Syringe,
   Cross,
   Activity,
-  Pill
+  Pill,
+  User,             // for patient
+  ShieldCheck,      // for admin
+  UserCog,          // for superadmin (optional)
+  UserRound         // another option for doctor/patient
 } from 'lucide-react';
+
+// Optional: keep react-icons for doctor if you like its style
+import { FaUserMd } from 'react-icons/fa';
 
 export default function LoginForm({ 
   role, 
   roleLabel, 
   roleColor, 
-  Icon,
+  iconElement,  // ← this is the rendered JSX element for the icon
   redirectPath 
+
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +39,30 @@ export default function LoginForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  // ────────────────────────────────────────────────
+  // Role ke hisaab se icon choose karo
+  const getRoleIcon = () => {
+    switch (role) {
+      case 'doctor':
+        return <FaUserMd className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
+      
+      case 'admin':
+        return <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
+      
+      case 'patient':
+        return <User className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
+      
+      case 'superadmin':
+        return <UserCog className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
+      
+      default:
+        return <Heart className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
+    }
+  };
+
+  const roleIcon = getRoleIcon();
+  // ────────────────────────────────────────────────
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -225,7 +257,7 @@ export default function LoginForm({
                 transition={{ type: "spring", damping: 15 }}
                 className={`inline-flex p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r ${colorMap[roleColor]} mb-3 sm:mb-4 shadow-xl`}
               >
-                <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                {roleIcon}  {/* ← Icon prop ki jagah yeh use hoga */}
               </motion.div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300">
                 {roleLabel} Login
@@ -343,7 +375,7 @@ export default function LoginForm({
             {/* Footer */}
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
               <Link 
-                href="/auth/login" 
+                href="/" 
                 className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
               >
                 <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
@@ -352,7 +384,7 @@ export default function LoginForm({
               
               <div className="text-center mt-3 sm:mt-4">
                 <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500">
-                  Secure • Encrypted • HIPAA Compliant
+                  Secure • Encrypted 
                 </span>
               </div>
             </div>

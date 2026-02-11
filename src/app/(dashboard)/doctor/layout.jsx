@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }) {
 
   // Temporary fix: role check ko loose kar do
   // Agar tum "superadmin", "billing_admin", "admin" sab allow karna chahte ho
-  const allowedRoles = ['admin', 'superadmin', 'billing_admin', 'staff_manager'];
+  const allowedRoles = ['doctor'];
   
   if (!user || !allowedRoles.includes(user.role)) {
     console.log('[ADMIN LAYOUT] Access denied - role:', user?.role);
@@ -57,53 +57,14 @@ export default async function AdminLayout({ children }) {
 
           <nav className="space-y-2">
             <a
-              href="/admin/dashboard"
+              href="/doctor/dashboard"
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </a>
 
-            <a
-              href="/admin/users"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <Users size={20} />
-              <span>Users</span>
-            </a>
-
-            <a
-              href="/admin/admins"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <User size={20} />
-              <span>Admins</span>
-            </a>
-
-            <a
-              href="/admin/doctors"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <Stethoscope size={20} />
-              <span>Doctors</span>
-            </a>
-
-            <a
-              href="/admin/appointments"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <Calendar size={20} />
-              <span>Appointments</span>
-            </a>
-
-            <a
-              href="/admin/settings"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <Settings size={20} />
-              <span>Settings</span>
-            </a>
-
+           
             <a
               href="/"
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors mt-8"
