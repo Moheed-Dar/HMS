@@ -1,5 +1,4 @@
-// src/app/(auth)/login/doctor/page.tsx
-// NO "use client" here — this is now a Server Component
+// src/app/(auth)/login/doctor/page.jsx
 
 import LoginForm from '@/components/auth/LoginForm';
 import { FaUserMd } from 'react-icons/fa';
