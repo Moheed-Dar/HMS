@@ -18,18 +18,18 @@ export default async function PatientLayout({ children }) {
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
-        redirect('/auth/patient/login');
+        redirect('/auth/login');
     }
 
     let user;
     try {
         const verification = verifyToken(token);
         if (!verification.valid) {
-            redirect('/auth/patient/login');
+            redirect('/auth/login');
         }
         user = verification.decoded;
     } catch (error) {
-        redirect('/auth/patient/login');
+        redirect('/auth/login');
     }
 
     // Strict check for patient role
