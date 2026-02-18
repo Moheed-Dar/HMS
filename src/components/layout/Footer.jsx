@@ -1,4 +1,11 @@
-import { FaHospital, FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaYoutube, FaEnvelope, FaWhatsapp } from 'react-icons/fa'
+'use client'
+
+import { motion } from 'framer-motion'
+import { 
+  FaHospital, 
+  FaLinkedin, FaTwitter, FaFacebook, FaInstagram, FaYoutube, 
+  FaEnvelope, FaWhatsapp 
+} from 'react-icons/fa'
 
 const footerLinks = {
   Product: ['Key Features', 'System Modules', 'Quick Start Guide', 'Support'],
@@ -14,93 +21,155 @@ const socialLinks = [
   { icon: FaYoutube, href: '#' },
 ]
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+}
+
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-slate-900 to-slate-950 text-slate-300 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
-          {/* Brand */}
-          <div className="lg:col-span-2">
+    <footer className="relative bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 py-20 overflow-hidden">
+      {/* Subtle background accent */}
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/10 via-transparent to-blue-950/5 pointer-events-none" />
+      
+      <motion.div
+        className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+      >
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+          {/* Brand & Description */}
+          <motion.div 
+            className="lg:col-span-2"
+            variants={itemVariants}
+          >
             <div className="flex items-center gap-3 mb-6">
               <div className="relative">
-                <img 
-                  src="/logo2.png" 
-                  alt="MediCare Logo" 
-                  className="h-12 w-auto object-contain"
+                <img
+                  src="/logo2.png"
+                  alt="MediCare Logo"
+                  className="h-14 w-auto object-contain drop-shadow-lg"
                 />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+                <motion.div
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-lg shadow-green-500/40"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
               </div>
-              <span className="text-2xl font-bold text-white bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">MediCare</span>
+              <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
+                MediCare
+              </span>
             </div>
-            <p className="text-sm text-slate-400 mb-6 max-w-md leading-relaxed">
-              Advanced healthcare management platform built for medical practices and hospitals across Pakistan. Simplify your operations with our comprehensive digital solution.
+
+            <p className="text-base text-slate-400 mb-8 max-w-md leading-relaxed">
+              Advanced healthcare management platform crafted for medical practices and hospitals across Pakistan. 
+              Empower your facility with secure, intelligent digital tools built for the future of care.
             </p>
-            <div className="flex gap-3">
+
+            <div className="flex gap-4">
               {socialLinks.map((social, index) => (
-                <a
+                <motion.a
                   key={index}
                   href={social.href}
-                  className="w-10 h-10 rounded-lg bg-slate-800/50 flex items-center justify-center hover:bg-gradient-to-br hover:from-cyan-500 hover:to-blue-600 hover:text-white transition-all duration-300 transform hover:scale-110"
+                  className="w-11 h-11 rounded-xl bg-slate-800/60 backdrop-blur-sm flex items-center justify-center text-slate-300 hover:text-white hover:bg-gradient-to-br hover:from-cyan-600/80 hover:to-blue-700/80 transition-all duration-400 transform hover:scale-110 shadow-md hover:shadow-cyan-500/20"
+                  whileHover={{ scale: 1.15, rotate: 5 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.08 }}
                 >
-                  <social.icon />
-                </a>
+                  <social.icon className="text-xl" />
+                </motion.a>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Links */}
+          {/* Links Columns */}
           {Object.entries(footerLinks).map(([title, links]) => (
-            <div key={title}>
-              <h3 className="text-white font-bold text-lg mb-5">{title}</h3>
-              <ul className="space-y-2.5">
+            <motion.div 
+              key={title}
+              variants={itemVariants}
+            >
+              <h3 className="text-white font-semibold text-lg mb-6 tracking-wide">{title}</h3>
+              <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link}>
-                    <a 
-                      href="#" 
-                      className="text-sm hover:text-cyan-400 transition-colors duration-300 flex items-center gap-2 group"
+                    <a
+                      href="#"
+                      className="text-sm text-slate-400 hover:text-cyan-400 transition-colors duration-300 flex items-center gap-2 group"
                     >
-                      <span className="w-1 h-1 rounded-full bg-cyan-400/0 group-hover:bg-cyan-400 transition-all duration-300" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/0 group-hover:bg-cyan-400 transition-all duration-400 group-hover:scale-125" />
                       {link}
                     </a>
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        {/* Contact Info */}
-        <div className="border-t border-slate-800 pt-8 mb-8">
-          <div className="flex flex-wrap justify-center gap-8 text-sm">
-            <a 
-              href="mailto:medicarehospital@gmail.com" 
-              className="hover:text-cyan-400 transition-colors flex items-center gap-2 group"
+        {/* Contact Bar */}
+        <motion.div 
+          className="border-t border-slate-800/60 pt-10 pb-12"
+          variants={itemVariants}
+        >
+          <div className="flex flex-wrap justify-center gap-10 text-base">
+            <motion.a
+              href="mailto:medicarehospital@gmail.com"
+              className="flex items-center gap-3 text-slate-300 hover:text-cyan-400 transition-colors group"
+              whileHover={{ scale: 1.03 }}
             >
-              <FaEnvelope className="w-4 h-4 text-cyan-400/50 group-hover:text-cyan-400 transition-colors" />
+              <div className="w-10 h-10 rounded-full bg-cyan-950/40 flex items-center justify-center">
+                <FaEnvelope className="text-cyan-400/70 group-hover:text-cyan-400 transition-colors" />
+              </div>
               medicarehospital@gmail.com
-            </a>
-            <a 
-              href="https://wa.me/923063333557" 
-              className="hover:text-green-400 transition-colors flex items-center gap-2 group"
+            </motion.a>
+
+            <motion.a
+              href="https://wa.me/923063333557"
+              className="flex items-center gap-3 text-slate-300 hover:text-green-400 transition-colors group"
+              whileHover={{ scale: 1.03 }}
             >
-              <FaWhatsapp className="w-4 h-4 text-green-400/50 group-hover:text-green-400 transition-colors" />
+              <div className="w-10 h-10 rounded-full bg-green-950/40 flex items-center justify-center">
+                <FaWhatsapp className="text-green-400/70 group-hover:text-green-400 transition-colors" />
+              </div>
               +92-306-333-3557
-            </a>
+            </motion.a>
           </div>
-        </div>
+        </motion.div>
 
         {/* Copyright */}
-        <div className="text-center text-sm text-slate-500">
+        <motion.div 
+          className="text-center text-sm text-slate-500/80"
+          variants={itemVariants}
+        >
           <p className="flex items-center justify-center gap-2">
-            <span>© 2025 MediCare.</span>
+            <span>© {new Date().getFullYear()} MediCare.</span>
             <span>All rights reserved.</span>
           </p>
-          <p className="mt-2 flex items-center justify-center gap-2">
-            <span>Developed with in</span>
-            <span className="text-cyan-400 font-semibold">Pakistan</span>
+          <p className="mt-3 flex items-center justify-center gap-2">
+            <span>Developed with passion in</span>
+            <span className="text-cyan-400 font-medium">Pakistan</span>
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </footer>
   )
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -16,60 +16,74 @@ import {
   Cross,
   Activity,
   Pill,
-  User,             // for patient
-  ShieldCheck,      // for admin
-  UserCog,          // for superadmin (optional)
-  UserRound         // another option for doctor/patient
+  User,             
+  ShieldCheck,      
+  UserCog,          
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 
-// Optional: keep react-icons for doctor if you like its style
 import { FaUserMd } from 'react-icons/fa';
 
 export default function LoginForm({ 
   role, 
   roleLabel, 
   roleColor, 
-  iconElement,  // ← this is the rendered JSX element for the icon
+  iconElement,
   redirectPath 
-
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  // Toast Notification State
+  const [toast, setToast] = useState({
+    show: false,
+    type: 'idle', // 'idle' | 'success' | 'error'
+    message: ''
+  });
+
   const router = useRouter();
 
-  // ────────────────────────────────────────────────
-  // Role ke hisaab se icon choose karo
+  // Auto-dismiss toast effect
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        setToast(prev => ({ ...prev, show: false }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show]);
+
   const getRoleIcon = () => {
     switch (role) {
       case 'doctor':
         return <FaUserMd className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
-      
       case 'admin':
         return <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
-      
       case 'patient':
         return <User className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
-      
       case 'superadmin':
         return <UserCog className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
-      
       default:
         return <Heart className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
     }
   };
 
   const roleIcon = getRoleIcon();
-  // ────────────────────────────────────────────────
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    
+    // Reset toast
+    setToast({ show: false, type: 'idle', message: '' });
 
     try {
+      // Simulate network delay for better UX visualization
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,21 +97,41 @@ export default function LoginForm({
       const data = await response.json();
 
       if (data.success) {
-        const userRole = data.user.role;
-        const dashboardPaths = {
-          'admin': '/admin/dashboard',
-          'doctor': '/doctor/dashboard',
-          'patient': '/patient/dashboard',
-          'superadmin': '/super-admin/dashboard'
-        };
-        
-        router.push(dashboardPaths[userRole] || redirectPath || '/');
-        router.refresh();
+        // SUCCESS STATE
+        setToast({
+          show: true,
+          type: 'success',
+          message: `Welcome back, ${roleLabel}! Redirecting...`
+        });
+
+        // Wait a moment to show the success toast before navigating
+        setTimeout(() => {
+          const userRole = data.user.role;
+          const dashboardPaths = {
+            'admin': '/admin/dashboard',
+            'doctor': '/doctor/dashboard',
+            'patient': '/patient/dashboard',
+            'superadmin': '/super-admin/dashboard'
+          };
+          router.push(dashboardPaths[userRole] || redirectPath || '/');
+          router.refresh();
+        }, 1500);
+
       } else {
-        setError(data.message || 'Login failed. Please try again.');
+        // ERROR STATE from API
+        setToast({
+          show: true,
+          type: 'error',
+          message: data.message || 'Invalid credentials. Please try again.'
+        });
       }
     } catch (err) {
-      setError('Network error. Please check your connection.');
+      // NETWORK ERROR STATE
+      setToast({
+        show: true,
+        type: 'error',
+        message: 'Network error. Please check your connection.'
+      });
     } finally {
       setLoading(false);
     }
@@ -117,18 +151,87 @@ export default function LoginForm({
     red: 'bg-rose-50 dark:bg-rose-900/10'
   };
 
+  // Toast styling configuration
+  const getToastStyles = (type) => {
+    switch (type) {
+      case 'success':
+        return {
+          bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+          border: 'border-emerald-200 dark:border-emerald-800',
+          text: 'text-emerald-800 dark:text-emerald-200',
+          icon: <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+          bar: 'bg-emerald-500'
+        };
+      case 'error':
+        return {
+          bg: 'bg-rose-50 dark:bg-rose-900/20',
+          border: 'border-rose-200 dark:border-rose-800',
+          text: 'text-rose-800 dark:text-rose-200',
+          icon: <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+          bar: 'bg-rose-500'
+        };
+      default:
+        return {
+          bg: 'bg-slate-50 dark:bg-slate-800',
+          border: 'border-slate-200 dark:border-slate-700',
+          text: 'text-slate-800 dark:text-slate-200',
+          icon: <AlertCircle className="w-5 h-5 text-slate-600" />,
+          bar: 'bg-slate-500'
+        };
+    }
+  };
+
+  const toastStyles = getToastStyles(toast.type);
+
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50 overflow-hidden">
+      
+      {/* --- TOAST NOTIFICATION CONTAINER --- */}
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-sm shadow-2xl"
+          >
+            <div className={`relative overflow-hidden rounded-xl border ${toastStyles.border} ${toastStyles.bg} backdrop-blur-md shadow-lg`}>
+              {/* Progress Bar */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gray-200/20">
+                <motion.div
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: 3, ease: "linear" }}
+                  className={`h-full ${toastStyles.bar}`}
+                />
+              </div>
+
+              <div className="p-4 flex items-center gap-3">
+                {toastStyles.icon}
+                <p className={`text-sm font-medium ${toastStyles.text}`}>
+                  {toast.message}
+                </p>
+                <button 
+                  onClick={() => setToast(prev => ({ ...prev, show: false }))}
+                  className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Modern Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Vibrant Gradient Base */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-400 dark:from-blue-900 dark:via-cyan-900 dark:to-teal-900" />
         
-        {/* Floating Bubbles - Optimized for no overflow */}
+        {/* Floating Bubbles */}
         {[...Array(15)].map((_, i) => {
           const size = Math.random() * 50 + 15;
-          const left = Math.random() * 85 + 5; // 5-90% safe range
-          const top = Math.random() * 85 + 5;  // 5-90% safe range
+          const left = Math.random() * 85 + 5;
+          const top = Math.random() * 85 + 5;
           return (
             <motion.div
               key={i}
@@ -154,7 +257,7 @@ export default function LoginForm({
           );
         })}
         
-        {/* Animated Medical Icons - Safe positioning */}
+        {/* Animated Medical Icons */}
         <motion.div 
           className="absolute top-1/4 left-1/4 w-14 h-14 opacity-20 dark:opacity-30"
           animate={{ rotate: 360 }}
@@ -203,7 +306,7 @@ export default function LoginForm({
           <Pill className="w-full h-full text-white" />
         </motion.div>
         
-        {/* Glowing Orbs - Safe positioning with percentage offsets */}
+        {/* Glowing Orbs */}
         <div className="absolute top-8 right-8 w-40 h-40 bg-blue-400/25 rounded-full blur-2xl animate-pulse" />
         <div className="absolute bottom-8 left-8 w-36 h-36 bg-cyan-400/25 rounded-full blur-2xl animate-pulse animation-delay-1000" />
         <div className="absolute top-1/2 left-1/2 w-56 h-56 bg-teal-400/20 rounded-full blur-2xl animate-pulse animation-delay-2000 transform -translate-x-1/2 -translate-y-1/2" />
@@ -211,11 +314,11 @@ export default function LoginForm({
         {/* Depth Overlay */}
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-blue-900/15 to-transparent dark:via-blue-900/25" />
         
-        {/* Vignette Effect - Focus on center */}
+        {/* Vignette Effect */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_35%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
-      {/* Decorative Wave Pattern - Bottom only */}
+      {/* Decorative Wave Pattern */}
       <svg className="absolute bottom-0 left-0 right-0 h-32" viewBox="0 0 1440 100" preserveAspectRatio="none">
         <path 
           fill="url(#waveGradient)" 
@@ -242,10 +345,8 @@ export default function LoginForm({
         className={`relative w-full max-w-md mx-auto ${bgColorMap[roleColor]}`}
       >
         <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden relative">
-          {/* Glowing Border Effect */}
           <div className={`absolute inset-0 rounded-2xl opacity-40 blur-xl ${colorMap[roleColor]}`} />
           
-          {/* Header Bar */}
           <div className={`h-1.5 bg-gradient-to-r ${colorMap[roleColor]}`} />
           
           <div className="p-6 sm:p-8 relative z-10">
@@ -257,7 +358,7 @@ export default function LoginForm({
                 transition={{ type: "spring", damping: 15 }}
                 className={`inline-flex p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r ${colorMap[roleColor]} mb-3 sm:mb-4 shadow-xl`}
               >
-                {roleIcon}  {/* ← Icon prop ki jagah yeh use hoga */}
+                {roleIcon}
               </motion.div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300">
                 {roleLabel} Login
@@ -266,18 +367,6 @@ export default function LoginForm({
                 Enter your credentials to access your dashboard
               </p>
             </div>
-
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg bg-red-50/70 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm flex items-center gap-2 backdrop-blur-sm"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                {error}
-              </motion.div>
-            )}
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -390,7 +479,6 @@ export default function LoginForm({
             </div>
           </div>
           
-          {/* Bottom Accent Bar */}
           <div className={`h-1 bg-gradient-to-r ${colorMap[roleColor]} opacity-75`} />
         </div>
       </motion.div>

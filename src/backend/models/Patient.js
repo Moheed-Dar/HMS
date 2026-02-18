@@ -1,5 +1,4 @@
 // @/backend/models/Patient.js
-
 import mongoose from "mongoose";
 
 const PatientSchema = new mongoose.Schema(
@@ -31,7 +30,7 @@ const PatientSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: [true, "Phone number is required"],
-      match: [/^[0-9]{10,15}$/, "Please enter a valid phone number"],
+      match: [/^[0-9]{10,15}$/, "Please enter a valid phone number (10–15 digits)"],
     },
     address: {
       type: String,
@@ -50,27 +49,31 @@ const PatientSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+
+    // ── Important: allow null for self-registration ────────────────────────
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: "createdByModel",
-      required: true, // Dynamic reference for Admin or SuperAdmin
+      default: null,           // ← changed
+      required: false,         // ← changed
     },
     createdByModel: {
       type: String,
-      enum: ["Admin", "SuperAdmin", "Doctor"],
-      default: "Admin",
-      required: true,
+      enum: ["Admin", "SuperAdmin", "Doctor", null],
+      default: null,           // ← changed
+      required: false,         // ← changed
     },
+
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: "updatedByModel",
     },
-
     updatedByModel: {
       type: String,
       enum: ["Admin", "SuperAdmin", "Doctor"],
     },
-    // YE SAB AB OPTIONAL HAIN — REQUIRED NHI!
+
+    // optional fields
     dateOfBirth: {
       type: Date,
       validate: {
@@ -78,30 +81,19 @@ const PatientSchema = new mongoose.Schema(
         message: "Date of birth must be in the past",
       },
     },
-    gender: {
-      type: String,
-      enum: ["male", "female", "other"],
-    },
-    bloodGroup: {
-      type: String,
-      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
-    },
-    emergencyContact: Object,
-    medicalHistory: Object,
-    assignedDoctor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Doctor",
-    },
+    gender: { type: String, enum: ["male", "female", "other"] },
+    bloodGroup: { type: String, enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+    emergencyContact: { type: Object, default: {} },
+    medicalHistory: { type: Object, default: {} },
+    assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
   },
   { timestamps: true }
 );
 
-// Password remove from response
 PatientSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   return obj;
 };
 
-export default mongoose.models.Patient ||
-  mongoose.model("Patient", PatientSchema);
+export default mongoose.models.Patient || mongoose.model("Patient", PatientSchema);
