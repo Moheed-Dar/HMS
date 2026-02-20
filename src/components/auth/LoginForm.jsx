@@ -40,7 +40,7 @@ export default function LoginForm({
   // Toast Notification State
   const [toast, setToast] = useState({
     show: false,
-    type: 'idle', // 'idle' | 'success' | 'error'
+    type: 'idle',
     message: ''
   });
 
@@ -73,6 +73,14 @@ export default function LoginForm({
 
   const roleIcon = getRoleIcon();
 
+  // Determine API endpoint based on role
+  const getApiEndpoint = (userRole) => {
+    if (userRole === 'superadmin') {
+      return '/api/super-admin/login';
+    }
+    return '/api/auth/login';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -84,14 +92,18 @@ export default function LoginForm({
       // Simulate network delay for better UX visualization
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      const response = await fetch('/api/auth/login', {
+      // Get correct API endpoint
+      const apiEndpoint = getApiEndpoint(role);
+      
+      // Prepare request body based on role
+      const requestBody = role === 'superadmin' 
+        ? { email, password }  // superadmin ke liye sirf email/password
+        : { email, password, role };  // others ke liye role bhi bhejo
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          role: role === 'superadmin' ? 'superadmin' : role
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -104,9 +116,13 @@ export default function LoginForm({
           message: `Welcome back, ${roleLabel}! Redirecting...`
         });
 
+        // Clear form fields immediately after successful submission
+        setEmail('');
+        setPassword('');
+
         // Wait a moment to show the success toast before navigating
         setTimeout(() => {
-          const userRole = data.user.role;
+          const userRole = data.user?.role || role;
           const dashboardPaths = {
             'admin': '/admin/dashboard',
             'doctor': '/doctor/dashboard',

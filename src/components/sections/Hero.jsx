@@ -9,7 +9,7 @@ const stats = [
   { value: '100%', label: 'Web Based' },
   { value: '24/7', label: 'Assistance' },
   { value: '5+', label: 'Access Levels' },
-  { value: 'HEC', label: 'Certified' },
+  { value: 'PMDC', label: 'Certified' },
 ]
 
 export default function Hero() {
