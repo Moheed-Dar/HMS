@@ -14,6 +14,9 @@ const integrations = [
   { name: 'PDF Generation', category: 'Documents', color: 'bg-orange-500' },
 ]
 
+// 3 copies for seamless infinite loop
+const duplicatedIntegrations = [...integrations, ...integrations, ...integrations]
+
 export default function Integrations() {
   return (
     <section className="py-20 lg:py-32 bg-white dark:bg-slate-900">
@@ -25,30 +28,61 @@ export default function Integrations() {
           description={<span className="text-slate-600 dark:text-slate-400">Powerful connections with top-tier services to enhance your medical practice efficiency</span>}
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12">
-          {integrations.map((integration, index) => (
-            <motion.div
-              key={integration.name}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-              className="group"
-            >
-              <div className="bg-slate-50 cursor-pointer dark:bg-slate-800 rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 hover:border-cyan-200 dark:hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
-                <div className={`w-12 h-12 ${integration.color} rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                  <span className="text-white font-bold text-lg">
-                    {integration.name[0]}
-                  </span>
+        {/* Container with hidden overflow */}
+        <div className="relative mb-12 overflow-hidden rounded-2xl py-4">
+          {/* Gradient masks */}
+          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent dark:from-slate-900 z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent dark:from-slate-900 z-10 pointer-events-none" />
+
+          <motion.div
+            className="flex gap-6"
+            animate={{
+              x: [0, -33.33 * integrations.length + "%"],
+            }}
+            transition={{
+              x: {
+                repeat: Infinity,
+                repeatType: "loop",
+                duration: 40,
+                ease: "linear",
+              },
+            }}
+          >
+            {duplicatedIntegrations.map((integration, index) => (
+              <motion.div
+                key={`${integration.name}-${index}`}
+                className="flex-shrink-0 w-[calc(16.666%-20px)] min-w-[160px] group"
+                animate={{
+                  y: [0, -8, 0, 8, 0],
+                }}
+                transition={{
+                  y: {
+                    repeat: Infinity,
+                    duration: 3 + (index % 3) * 0.5,
+                    ease: "easeInOut",
+                    delay: index * 0.1,
+                  },
+                }}
+                whileHover={{ 
+                  scale: 1.05,
+                  y: -10,
+                  transition: { duration: 0.2 } 
+                }}
+              >
+                <div className="bg-slate-50 cursor-pointer dark:bg-slate-800 rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 hover:border-cyan-200 dark:hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300 h-full">
+                  <div className={`w-12 h-12 ${integration.color} rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                    <span className="text-white font-bold text-lg">
+                      {integration.name[0]}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-200 text-sm mb-1">
+                    {integration.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{integration.category}</p>
                 </div>
-                <h3 className="font-semibold text-slate-900 dark:text-slate-200 text-sm mb-1">
-                  {integration.name}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{integration.category}</p>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
 
         <div className="text-center">
