@@ -9,6 +9,9 @@ import Testimonials from "@/components/sections/Testimonials";
 import CTA from "@/components/sections/CTA";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Pricing from "@/components/sections/Pricing";
+import About from "@/components/sections/About";
+import Contact from "@/components/sections/Contact";
 
 export default function Home() {
   return (
@@ -22,6 +25,9 @@ export default function Home() {
       <Integrations />
       <Testimonials />
       <CTA />
+      <Pricing/>
+      <About/>
+      <Contact/>
       <Footer />
     </>
   );
