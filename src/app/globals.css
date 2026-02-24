@@ -57,6 +57,24 @@
     @apply bg-background text-foreground transition-colors duration-300;
   }
 }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c4b5fd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a78bfa;
+}
 
 @layer utilities {
   .text-gradient {
@@ -77,5 +95,12 @@
   
   .section-bg-alt {
     @apply bg-slate-50 dark:bg-slate-900 transition-colors duration-300;
+  }
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }

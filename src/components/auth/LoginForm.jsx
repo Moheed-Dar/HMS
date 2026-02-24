@@ -20,7 +20,8 @@ import {
   ShieldCheck,      
   UserCog,          
   XCircle,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 import { FaUserMd } from 'react-icons/fa';
@@ -37,11 +38,18 @@ export default function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
+  // ✅ Field-level error state
+  const [fieldErrors, setFieldErrors] = useState({
+    email: '',
+    password: ''
+  });
+
   // Toast Notification State
   const [toast, setToast] = useState({
     show: false,
     type: 'idle',
-    message: ''
+    message: '',
+    animation: 'slide'
   });
 
   const router = useRouter();
@@ -55,6 +63,15 @@ export default function LoginForm({
       return () => clearTimeout(timer);
     }
   }, [toast.show]);
+
+  // ✅ Clear field errors when user starts typing
+  useEffect(() => {
+    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
+  }, [email]);
+
+  useEffect(() => {
+    if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+  }, [password]);
 
   const getRoleIcon = () => {
     switch (role) {
@@ -73,6 +90,33 @@ export default function LoginForm({
 
   const roleIcon = getRoleIcon();
 
+  // ✅ Role-specific toast animation variants
+  const getToastAnimation = (userRole) => {
+    const animations = {
+      patient: {
+        initial: { opacity: 0, y: -50, scale: 0.9, rotateX: -15 },
+        animate: { opacity: 1, y: 0, scale: 1, rotateX: 0 },
+        exit: { opacity: 0, y: -20, scale: 0.95 }
+      },
+      doctor: {
+        initial: { opacity: 0, x: -100, scale: 0.8 },
+        animate: { opacity: 1, x: 0, scale: 1 },
+        exit: { opacity: 0, x: 100, scale: 0.9 }
+      },
+      admin: {
+        initial: { opacity: 0, y: 50, scale: 1.1 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 20, scale: 0.95 }
+      },
+      superadmin: {
+        initial: { opacity: 0, scale: 0.5, rotate: -180 },
+        animate: { opacity: 1, scale: 1, rotate: 0 },
+        exit: { opacity: 0, scale: 0.5, rotate: 180 }
+      }
+    };
+    return animations[userRole] || animations.patient;
+  };
+
   // Determine API endpoint based on role
   const getApiEndpoint = (userRole) => {
     if (userRole === 'superadmin') {
@@ -81,24 +125,84 @@ export default function LoginForm({
     return '/api/auth/login';
   };
 
+  // ✅ Parse API errors to field-level messages
+  const parseFieldErrors = (apiMessage, errors) => {
+    const newErrors = { email: '', password: '' };
+    
+    if (errors) {
+      if (errors.email) newErrors.email = Array.isArray(errors.email) ? errors.email[0] : errors.email;
+      if (errors.password) newErrors.password = Array.isArray(errors.password) ? errors.password[0] : errors.password;
+    }
+    
+    if (!newErrors.email && !newErrors.password) {
+      const msg = apiMessage?.toLowerCase() || '';
+      if (msg.includes('email') || msg.includes('not found')) {
+        newErrors.email = 'This email is not registered.';
+      } else if (msg.includes('password') || msg.includes('incorrect')) {
+        newErrors.password = 'Incorrect password. Please try again.';
+      } else if (msg.includes('verify') || msg.includes('activate')) {
+        newErrors.email = 'Please verify your email before logging in.';
+      } else {
+        newErrors.password = 'Invalid Password. Please check and try again.';
+      }
+    }
+    
+    return newErrors;
+  };
+
+  // ✅ RESET FORM FUNCTION
+  const handleReset = () => {
+    setEmail('');
+    setPassword('');
+    setFieldErrors({ email: '', password: '' });
+    setShowPassword(false);
+    
+    // Optional: Show success toast
+    setToast({
+      show: true,
+      type: 'success',
+      message: 'Form cleared successfully!',
+      animation: role
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
-    // Reset toast
-    setToast({ show: false, type: 'idle', message: '' });
+    setToast({ show: false, type: 'idle', message: '', animation: 'slide' });
+    setFieldErrors({ email: '', password: '' });
+
+    // ✅ Client-side validation
+    let hasError = false;
+    if (!email.trim()) {
+      setFieldErrors(prev => ({ ...prev, email: 'Email address is required.' }));
+      hasError = true;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      setFieldErrors(prev => ({ ...prev, email: 'Please enter a valid email address.' }));
+      hasError = true;
+    }
+    
+    if (!password) {
+      setFieldErrors(prev => ({ ...prev, password: 'Password is required.' }));
+      hasError = true;
+    } else if (password.length < 6) {
+      setFieldErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters.' }));
+      hasError = true;
+    }
+
+    if (hasError) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Simulate network delay for better UX visualization
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Get correct API endpoint
       const apiEndpoint = getApiEndpoint(role);
-      
-      // Prepare request body based on role
       const requestBody = role === 'superadmin' 
-        ? { email, password }  // superadmin ke liye sirf email/password
-        : { email, password, role };  // others ke liye role bhi bhejo
+        ? { email, password }
+        : { email, password, role };
 
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -109,18 +213,17 @@ export default function LoginForm({
       const data = await response.json();
 
       if (data.success) {
-        // SUCCESS STATE
         setToast({
           show: true,
           type: 'success',
-          message: `Welcome back, ${roleLabel}! Redirecting...`
+          message: `Welcome back, ${roleLabel}! Redirecting...`,
+          animation: role
         });
 
-        // Clear form fields immediately after successful submission
         setEmail('');
         setPassword('');
+        setFieldErrors({ email: '', password: '' });
 
-        // Wait a moment to show the success toast before navigating
         setTimeout(() => {
           const userRole = data.user?.role || role;
           const dashboardPaths = {
@@ -134,19 +237,21 @@ export default function LoginForm({
         }, 1500);
 
       } else {
-        // ERROR STATE from API
+        const parsedErrors = parseFieldErrors(data.message, data.errors);
+        setFieldErrors(parsedErrors);
         setToast({
           show: true,
           type: 'error',
-          message: data.message || 'Invalid credentials. Please try again.'
+          message: data.message || 'Login failed. Please check your Email or Password.',
+          animation: role
         });
       }
     } catch (err) {
-      // NETWORK ERROR STATE
       setToast({
         show: true,
         type: 'error',
-        message: 'Network error. Please check your connection.'
+        message: 'Network error. Please check your connection.',
+        animation: role
       });
     } finally {
       setLoading(false);
@@ -167,7 +272,6 @@ export default function LoginForm({
     red: 'bg-rose-50 dark:bg-rose-900/10'
   };
 
-  // Toast styling configuration
   const getToastStyles = (type) => {
     switch (type) {
       case 'success':
@@ -198,20 +302,34 @@ export default function LoginForm({
   };
 
   const toastStyles = getToastStyles(toast.type);
+  const toastAnimation = getToastAnimation(toast.animation);
+
+  // ✅ Input field styling with error state
+  const getInputClasses = (hasError) => `
+    w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl 
+    border transition-all outline-none text-sm
+    ${hasError 
+      ? 'border-rose-400 bg-rose-50/50 dark:bg-rose-900/20 focus:ring-2 focus:ring-rose-400' 
+      : 'border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+    }
+    text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+  `;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50 overflow-hidden">
       
-      {/* --- TOAST NOTIFICATION CONTAINER --- */}
+      {/* ✅ FIXED TOAST - Mobile responsive positioning */}
       <AnimatePresence>
         {toast.show && (
           <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-sm shadow-2xl"
+            initial={toastAnimation.initial}
+            animate={toastAnimation.animate}
+            exit={toastAnimation.exit}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            // ✅ Mobile: full width with margins | Desktop: centered
+            className="fixed top-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto sm:max-w-md z-[100]"
           >
-            <div className={`relative overflow-hidden rounded-xl border ${toastStyles.border} ${toastStyles.bg} backdrop-blur-md shadow-lg`}>
+            <div className={`relative overflow-hidden rounded-xl border ${toastStyles.border} ${toastStyles.bg} backdrop-blur-md shadow-2xl`}>
               {/* Progress Bar */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gray-200/20">
                 <motion.div
@@ -222,14 +340,15 @@ export default function LoginForm({
                 />
               </div>
 
-              <div className="p-4 flex items-center gap-3">
-                {toastStyles.icon}
-                <p className={`text-sm font-medium ${toastStyles.text}`}>
+              <div className="p-3 sm:p-4 flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">{toastStyles.icon}</div>
+                <p className={`text-sm font-medium flex-1 pr-8 ${toastStyles.text}`}>
                   {toast.message}
                 </p>
                 <button 
                   onClick={() => setToast(prev => ({ ...prev, show: false }))}
-                  className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  className="absolute right-2 top-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-black/5 transition-colors"
+                  aria-label="Close notification"
                 >
                   <XCircle className="w-4 h-4" />
                 </button>
@@ -367,7 +486,21 @@ export default function LoginForm({
           
           <div className="p-6 sm:p-8 relative z-10">
             {/* Header */}
-            <div className="text-center mb-6 sm:mb-8">
+            <div className="text-center mb-6 sm:mb-8 relative">
+              
+              {/* ✅ RESET BUTTON - Top right corner */}
+              <motion.button
+                type="button"
+                onClick={handleReset}
+                whileHover={{ scale: 1.1, rotate: 180 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                aria-label="Reset form"
+                title="Clear all fields"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </motion.button>
+
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -386,13 +519,13 @@ export default function LoginForm({
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Email Address
-                </label>
+              
+              {/* Email Field */}
+              <motion.div animate={fieldErrors.email ? { x: [-10, 10, -10, 10, 0] } : {}} transition={{ duration: 0.3 }}>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email Address</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${fieldErrors.email ? 'text-rose-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -401,19 +534,26 @@ export default function LoginForm({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
+                    className={getInputClasses(!!fieldErrors.email)}
                     placeholder="name@example.com"
                   />
+                  {fieldErrors.email && <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-500" />}
                 </div>
-              </div>
+                <AnimatePresence>
+                  {fieldErrors.email && (
+                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-1 text-xs text-rose-500 dark:text-rose-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />{fieldErrors.email}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Password
-                </label>
+              {/* Password Field */}
+              <motion.div animate={fieldErrors.password ? { x: [-10, 10, -10, 10, 0] } : {}} transition={{ duration: 0.3 }}>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Password</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${fieldErrors.password ? 'text-rose-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
@@ -422,26 +562,27 @@ export default function LoginForm({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 sm:pl-10 pr-10 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-slate-300 dark:border-slate-600 bg-white/50 dark:bg-slate-700/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
+                    className={getInputClasses(!!fieldErrors.password)}
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                  {fieldErrors.password && <AlertCircle className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-500" />}
                 </div>
-              </div>
+                <AnimatePresence>
+                  {fieldErrors.password && (
+                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-1 text-xs text-rose-500 dark:text-rose-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />{fieldErrors.password}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div className="relative">
-                    <input 
-                      type="checkbox" 
-                      className="peer h-3.5 w-3.5 sm:h-4 sm:w-4 cursor-pointer appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 checked:bg-blue-500 checked:border-blue-500 transition-all" 
-                    />
+                    <input type="checkbox" className="peer h-3.5 w-3.5 sm:h-4 sm:w-4 cursor-pointer appearance-none rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 checked:bg-blue-500 checked:border-blue-500 transition-all" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
                       <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
@@ -450,42 +591,60 @@ export default function LoginForm({
                   </div>
                   <span className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">Remember me</span>
                 </label>
-                <Link 
-                  href="/forgot-password" 
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium hover:underline transition-colors text-xs sm:text-sm"
-                >
+                <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium hover:underline transition-colors text-xs sm:text-sm">
                   Forgot password?
                 </Link>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full py-2.5 sm:py-3.5 px-4 rounded-lg sm:rounded-xl bg-gradient-to-r ${colorMap[roleColor]} text-white font-semibold shadow-lg hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm sm:text-base`}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    <span>Signing in...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Sign In</span>
-                  </>
-                )}
-              </button>
+              {/* ✅ Submit & Reset Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`flex-1 py-2.5 sm:py-3.5 px-4 rounded-lg sm:rounded-xl bg-gradient-to-r ${colorMap[roleColor]} text-white font-semibold shadow-lg hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm sm:text-base`}
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /><span>Signing in...</span></>
+                  ) : (
+                    <><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /><span>Sign In</span></>
+                  )}
+                </button>
+                
+                {/* ✅ RESET BUTTON */}
+                <motion.button
+                  type="button"
+                  onClick={handleReset}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3.5 px-4 rounded-lg sm:rounded-xl border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all text-sm sm:text-base"
+                >
+                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Reset
+                </motion.button>
+              </div>
             </form>
 
             {/* Footer */}
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
-              <Link 
-                href="/" 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
-              >
+              <Link href="/" className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
                 <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
                 Back to role selection
               </Link>
+              
+              {/* ✅ REGISTER BUTTON - Only for Patient Role */}
+              {role === 'patient' && (
+                <div className="text-center mt-4">
+                  <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Don't have an account?{' '}
+                  </span>
+                  <Link 
+                    href="/register/patient" 
+                    className={`text-sm font-semibold text-${roleColor}-600 hover:text-${roleColor}-700 dark:text-${roleColor}-400 dark:hover:text-${roleColor}-300 hover:underline transition-colors`}
+                  >
+                    Register as Patient
+                  </Link>
+                </div>
+              )}
               
               <div className="text-center mt-3 sm:mt-4">
                 <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500">
