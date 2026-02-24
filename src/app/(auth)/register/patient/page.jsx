@@ -376,19 +376,6 @@ export default function PatientRegisterPage() {
           {/* Header */}
           <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center relative">
             
-            {/* ✅ RESET BUTTON - Top right corner */}
-            <motion.button
-              type="button"
-              onClick={handleReset}
-              whileHover={{ scale: 1.1, rotate: 180 }}
-              whileTap={{ scale: 0.95 }}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-              aria-label="Reset form"
-              title="Clear all fields"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </motion.button>
-
             <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg mb-3 sm:mb-4">
               <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
             </div>

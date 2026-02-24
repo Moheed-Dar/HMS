@@ -487,19 +487,6 @@ export default function LoginForm({
           <div className="p-6 sm:p-8 relative z-10">
             {/* Header */}
             <div className="text-center mb-6 sm:mb-8 relative">
-              
-              {/* ✅ RESET BUTTON - Top right corner */}
-              <motion.button
-                type="button"
-                onClick={handleReset}
-                whileHover={{ scale: 1.1, rotate: 180 }}
-                whileTap={{ scale: 0.95 }}
-                className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                aria-label="Reset form"
-                title="Clear all fields"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </motion.button>
 
               <motion.div
                 initial={{ scale: 0 }}
